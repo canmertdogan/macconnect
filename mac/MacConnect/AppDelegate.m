@@ -196,12 +196,16 @@
     NSString *title = notification[@"title"];
     NSString *text = notification[@"text"];
     NSString *subText = notification[@"sub_text"];
+    NSString *icon = notification[@"icon"];
+    NSString *pkg = notification[@"package_name"];
 
-    // Deliver native macOS notification banner
+    // Deliver native macOS notification banner with app icon
     [[NotificationPresenter sharedPresenter] presentNotificationWithAppName:appName
                                                                       title:title
                                                                        body:text
                                                                     subText:subText
+                                                                 iconBase64:icon
+                                                                packageName:pkg
                                                                       sound:YES];
 
     // Record in recent list

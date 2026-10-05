@@ -52,6 +52,16 @@
                                   body:(NSString *)body
                                subText:(NSString *)subText
                                  sound:(BOOL)playSound {
+    [self presentNotificationWithAppName:appName title:title body:body subText:subText iconBase64:nil packageName:nil sound:playSound];
+}
+
+- (void)presentNotificationWithAppName:(NSString *)appName
+                                 title:(NSString *)title
+                                  body:(NSString *)body
+                               subText:(NSString *)subText
+                            iconBase64:(NSString *)iconBase64
+                           packageName:(NSString *)packageName
+                                 sound:(BOOL)playSound {
     dispatch_async(dispatch_get_main_queue(), ^{
         NSString *displayTitle = (appName && appName.length > 0) ? appName : @"Phone";
         
@@ -68,13 +78,37 @@
 
         NSString *displayBody = (body && body.length > 0) ? body : @"";
 
-        // Try modern native macOS UserNotifications framework
+        // Modern native macOS UserNotifications framework
         UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
         content.title = displayTitle;
         content.subtitle = displaySubtitle;
         content.body = displayBody;
         if (playSound) {
             content.sound = [UNNotificationSound defaultSound];
+        }
+
+        // Attach application icon if provided
+        if (iconBase64 && iconBase64.length > 0) {
+            NSData *iconData = [[NSData alloc] initWithBase64EncodedString:iconBase64 options:NSDataBase64DecodingIgnoreUnknownCharacters];
+            if (iconData && iconData.length > 0) {
+                NSString *cachesDir = [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) firstObject];
+                NSString *iconDir = [cachesDir stringByAppendingPathComponent:@"com.macconnect.macos/icons"];
+                [[NSFileManager defaultManager] createDirectoryAtPath:iconDir withIntermediateDirectories:YES attributes:nil error:nil];
+                
+                NSString *safePkg = (packageName && packageName.length > 0) ? packageName : @"app";
+                safePkg = [safePkg stringByReplacingOccurrencesOfString:@"/" withString:@"_"];
+                NSString *iconPath = [iconDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.png", safePkg]];
+                [iconData writeToFile:iconPath atomically:YES];
+
+                NSError *attError = nil;
+                UNNotificationAttachment *attachment = [UNNotificationAttachment attachmentWithIdentifier:[NSString stringWithFormat:@"icon_%@", safePkg]
+                                                                                                     URL:[NSURL fileURLWithPath:iconPath]
+                                                                                                 options:nil
+                                                                                                   error:&attError];
+                if (attachment) {
+                    content.attachments = @[attachment];
+                }
+            }
         }
 
         NSString *reqId = [NSString stringWithFormat:@"mc_notif_%f", [[NSDate date] timeIntervalSince1970]];

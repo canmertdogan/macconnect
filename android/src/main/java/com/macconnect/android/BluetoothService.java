@@ -249,7 +249,7 @@ public class BluetoothService extends Service {
         }
     }
 
-    public void sendNotification(String id, String pkg, String appName, String title, String text, String subText, long timestamp, boolean isOngoing) {
+    public void sendNotification(String id, String pkg, String appName, String title, String text, String subText, String iconB64, long timestamp, boolean isOngoing) {
         try {
             JSONObject obj = new JSONObject();
             obj.put("type", "notification_posted");
@@ -259,6 +259,9 @@ public class BluetoothService extends Service {
             obj.put("title", title != null ? title : "");
             obj.put("text", text != null ? text : "");
             obj.put("sub_text", subText != null ? subText : "");
+            if (iconB64 != null && !iconB64.isEmpty()) {
+                obj.put("icon", iconB64);
+            }
             obj.put("timestamp", timestamp > 0 ? timestamp : System.currentTimeMillis());
             obj.put("is_ongoing", isOngoing);
             sendJson(obj);
@@ -266,6 +269,10 @@ public class BluetoothService extends Service {
         } catch (Exception e) {
             Log.e(TAG, "Error building notification JSON", e);
         }
+    }
+
+    public void sendNotification(String id, String pkg, String appName, String title, String text, String subText, long timestamp, boolean isOngoing) {
+        sendNotification(id, pkg, appName, title, text, subText, null, timestamp, isOngoing);
     }
 
     public void sendNotificationRemoved(String id, String pkg) {

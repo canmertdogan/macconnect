@@ -24,6 +24,8 @@
     <string>12.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>MacConnect connects via Bluetooth to receive and display notifications from your Android phone.</string>
 </dict>
