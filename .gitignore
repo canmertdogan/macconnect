@@ -18,3 +18,4 @@ mac/build/MacConnect
 # Logs and scratch
 *.log
 scratch/
+*.zip
