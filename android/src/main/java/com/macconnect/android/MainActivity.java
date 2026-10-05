@@ -18,8 +18,10 @@ import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.provider.OpenableColumns;
 import android.provider.Settings;
 import android.text.TextUtils;
@@ -59,6 +61,7 @@ public class MainActivity extends Activity {
     private View mViewStatusDot;
     private TextView mTvStatusTitle;
     private TextView mTvStatusDetail;
+    private TextView mTvBatteryBadge;
     private Spinner mSpinnerDevices;
     private Button mBtnConnect;
     private Button mBtnRefresh;
@@ -84,7 +87,9 @@ public class MainActivity extends Activity {
     private ListView mLvHistory;
     private NotificationHistoryAdapter mHistoryAdapter;
 
-    // Tab 3: Settings
+    // Tab 3: Settings & Battery Optimization
+    private TextView mTvBatteryOptBadge;
+    private Button mBtnBatteryOpt;
     private TextView mTvNotifPermStatus;
     private Button mBtnGrantNotif;
     private TextView mTvBtPermStatus;
@@ -142,6 +147,7 @@ public class MainActivity extends Activity {
         mViewStatusDot = findViewById(R.id.view_status_dot);
         mTvStatusTitle = findViewById(R.id.tv_status_title);
         mTvStatusDetail = findViewById(R.id.tv_status_detail);
+        mTvBatteryBadge = findViewById(R.id.tv_battery_badge);
         mSpinnerDevices = findViewById(R.id.spinner_devices);
         mBtnConnect = findViewById(R.id.btn_connect);
         mBtnRefresh = findViewById(R.id.btn_refresh);
@@ -164,13 +170,16 @@ public class MainActivity extends Activity {
         mLvHistory = findViewById(R.id.lv_history);
 
         // Tab 3 Views
+        mTvBatteryOptBadge = findViewById(R.id.tv_battery_opt_badge);
+        mBtnBatteryOpt = findViewById(R.id.btn_battery_opt);
         mTvNotifPermStatus = findViewById(R.id.tv_notif_perm_status);
         mBtnGrantNotif = findViewById(R.id.btn_grant_notif);
         mTvBtPermStatus = findViewById(R.id.tv_bt_perm_status);
         mBtnGrantBt = findViewById(R.id.btn_grant_bt);
         mBtnBatterySettings = findViewById(R.id.btn_battery_settings);
 
-        setDotColor(Color.parseColor("#FF3B30"));
+        setDotColor(Color.parseColor("#EF4444"));
+        updateBatteryDisplay();
 
         // Tab 1 Click Listeners
         mBtnConnect.setOnClickListener(new View.OnClickListener() {
@@ -253,6 +262,13 @@ public class MainActivity extends Activity {
         });
 
         // Tab 3 Click Listeners
+        mBtnBatteryOpt.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                requestIgnoreBatteryOptimizations();
+            }
+        });
+
         mBtnGrantNotif.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -307,23 +323,23 @@ public class MainActivity extends Activity {
     }
 
     private void selectTab(int index) {
-        // Reset tab styles
         mBtnTabTools.setBackgroundResource(index == 0 ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
-        mBtnTabTools.setTextColor(index == 0 ? Color.WHITE : Color.parseColor("#A0A0A5"));
+        mBtnTabTools.setTextColor(index == 0 ? Color.WHITE : Color.parseColor("#71717A"));
 
         mBtnTabHistory.setBackgroundResource(index == 1 ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
-        mBtnTabHistory.setTextColor(index == 1 ? Color.WHITE : Color.parseColor("#A0A0A5"));
+        mBtnTabHistory.setTextColor(index == 1 ? Color.WHITE : Color.parseColor("#71717A"));
 
         mBtnTabSettings.setBackgroundResource(index == 2 ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
-        mBtnTabSettings.setTextColor(index == 2 ? Color.WHITE : Color.parseColor("#A0A0A5"));
+        mBtnTabSettings.setTextColor(index == 2 ? Color.WHITE : Color.parseColor("#71717A"));
 
-        // Toggle layouts
         mLayoutTabTools.setVisibility(index == 0 ? View.VISIBLE : View.GONE);
         mLayoutTabHistory.setVisibility(index == 1 ? View.VISIBLE : View.GONE);
         mLayoutTabSettings.setVisibility(index == 2 ? View.VISIBLE : View.GONE);
 
         if (index == 1) {
             refreshNotificationHistory();
+        } else if (index == 2) {
+            updateBatteryOptimizationUI();
         }
     }
 
@@ -360,6 +376,67 @@ public class MainActivity extends Activity {
                 })
                 .setNegativeButton("İptal", null)
                 .show();
+    }
+
+    // --- Battery Optimizations ---
+
+    private void updateBatteryDisplay() {
+        try {
+            IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+            Intent batteryStatus = registerReceiver(null, filter);
+            if (batteryStatus != null) {
+                int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                if (level >= 0 && scale > 0) {
+                    int percent = (level * 100) / scale;
+                    mTvBatteryBadge.setText("🔋 %" + percent);
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void updateBatteryOptimizationUI() {
+        boolean isIgnored = isIgnoringBatteryOptimizations();
+        if (isIgnored) {
+            mTvBatteryOptBadge.setText("Korumalı ✅");
+            mTvBatteryOptBadge.setTextColor(Color.parseColor("#10B981"));
+            mBtnBatteryOpt.setText("Pil Optimizasyonundan Muaf Tutuldu (Aktif)");
+            mBtnBatteryOpt.setEnabled(false);
+            mBtnBatteryOpt.setBackgroundResource(R.drawable.bg_btn_secondary);
+        } else {
+            mTvBatteryOptBadge.setText("Kısıtlı ⚠️");
+            mTvBatteryOptBadge.setTextColor(Color.parseColor("#F59E0B"));
+            mBtnBatteryOpt.setText("Pil Tasarrufundan Muaf Tut (Önerilen)");
+            mBtnBatteryOpt.setEnabled(true);
+            mBtnBatteryOpt.setBackgroundResource(R.drawable.bg_btn_primary);
+        }
+    }
+
+    private boolean isIgnoringBatteryOptimizations() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (pm != null) {
+                return pm.isIgnoringBatteryOptimizations(getPackageName());
+            }
+        }
+        return true;
+    }
+
+    private void requestIgnoreBatteryOptimizations() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                intent.setData(Uri.parse("package:" + getPackageName()));
+                startActivity(intent);
+            } catch (Exception e) {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                    startActivity(intent);
+                } catch (Exception ignored) {
+                    Toast.makeText(this, "Pil ayarları açılamadı.", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
     }
 
     // --- Text / Clipboard Sharing ---
@@ -438,7 +515,7 @@ public class MainActivity extends Activity {
             return;
         }
 
-        mTvFileStatus.setText("Gönderiliyor: " + fileName + " (0%)");
+        mTvFileStatus.setText("Gönderiliyor: " + fileName + " (%0)");
         mProgressBarFile.setVisibility(View.VISIBLE);
         mProgressBarFile.setProgress(0);
         mBtnChooseFile.setEnabled(false);
@@ -547,7 +624,7 @@ public class MainActivity extends Activity {
         ScrollView scrollView = new ScrollView(this);
         TextView tv = new TextView(this);
         tv.setText(logText);
-        tv.setTextColor(Color.parseColor("#30D158"));
+        tv.setTextColor(Color.parseColor("#34D399"));
         tv.setTextSize(11);
         tv.setTypeface(android.graphics.Typeface.MONOSPACE);
         tv.setPadding(30, 20, 30, 20);
@@ -596,6 +673,8 @@ public class MainActivity extends Activity {
         }
 
         updatePermissionStatusUI();
+        updateBatteryOptimizationUI();
+        updateBatteryDisplay();
 
         BluetoothService svc = BluetoothService.getInstance();
         if (svc != null) {
@@ -628,24 +707,24 @@ public class MainActivity extends Activity {
 
     private void updateConnectionUI(int state, String devName) {
         if (state == Constants.STATE_CONNECTED) {
-            setDotColor(Color.parseColor("#34C759")); // Green
-            mTvStatusTitle.setText("Bağlandı");
+            setDotColor(Color.parseColor("#10B981")); // Emerald Green
+            mTvStatusTitle.setText("Bağlantı Aktif");
             mTvHeaderStatus.setText("Bağlı");
-            mTvHeaderStatus.setTextColor(Color.parseColor("#34C759"));
-            mTvStatusDetail.setText("Bağlı cihaz: " + (devName != null ? devName : "Mac") + ". Bildirimler ve veriler anlık iletiliyor.");
+            mTvHeaderStatus.setTextColor(Color.parseColor("#10B981"));
+            mTvStatusDetail.setText("💻 " + (devName != null ? devName : "Mac") + " bağlı. Bildirimler ve veriler gerçek zamanlı aktarılıyor.");
             mBtnConnect.setText("Bağlandı");
         } else if (state == Constants.STATE_CONNECTING) {
-            setDotColor(Color.parseColor("#FF9500")); // Orange
+            setDotColor(Color.parseColor("#F59E0B")); // Amber
             mTvStatusTitle.setText("Bağlanıyor...");
             mTvHeaderStatus.setText("Bağlanıyor");
-            mTvHeaderStatus.setTextColor(Color.parseColor("#FF9500"));
+            mTvHeaderStatus.setTextColor(Color.parseColor("#F59E0B"));
             mTvStatusDetail.setText("Mac ile Bluetooth kanalı kuruluyor...");
             mBtnConnect.setText("Bağlanıyor...");
         } else {
-            setDotColor(Color.parseColor("#FF3B30")); // Red
-            mTvStatusTitle.setText("Bağlantı Kesildi");
+            setDotColor(Color.parseColor("#EF4444")); // Rose Red
+            mTvStatusTitle.setText("Bağlantı Bekleniyor");
             mTvHeaderStatus.setText("Bağlantı Yok");
-            mTvHeaderStatus.setTextColor(Color.parseColor("#8E8E93"));
+            mTvHeaderStatus.setTextColor(Color.parseColor("#A1A1AA"));
             mTvStatusDetail.setText("Mac'ten Bluetooth bağlantısı bekleniyor (veya yukarıdan bağlanın).");
             mBtnConnect.setText("Mac'e Bağlan");
         }
@@ -669,19 +748,19 @@ public class MainActivity extends Activity {
     private void updatePermissionStatusUI() {
         boolean notifOk = isNotificationListenerEnabled();
         if (notifOk) {
-            mTvNotifPermStatus.setText("Bildirim Erişimi: Verildi \u2705");
+            mTvNotifPermStatus.setText("Bildirim Erişimi: Açık ✅");
             mBtnGrantNotif.setVisibility(View.GONE);
         } else {
-            mTvNotifPermStatus.setText("Bildirim Erişimi: Gerekli \u274C");
+            mTvNotifPermStatus.setText("Bildirim Erişimi: Gerekli ⚠️");
             mBtnGrantNotif.setVisibility(View.VISIBLE);
         }
 
         boolean btOk = hasBluetoothPermissions();
         if (btOk) {
-            mTvBtPermStatus.setText("Bluetooth İzni: Verildi \u2705");
+            mTvBtPermStatus.setText("Bluetooth İzni: Açık ✅");
             mBtnGrantBt.setVisibility(View.GONE);
         } else {
-            mTvBtPermStatus.setText("Bluetooth İzni: Gerekli \u274C");
+            mTvBtPermStatus.setText("Bluetooth İzni: Gerekli ⚠️");
             mBtnGrantBt.setVisibility(View.VISIBLE);
         }
     }

@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121212"
+    android:background="#09090B"
     android:orientation="vertical">
 
     <!-- Top App Bar -->
@@ -11,83 +11,112 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="14dp"
-        android:paddingBottom="10dp"
-        android:background="#161618">
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="12dp"
+        android:background="#09090B">
 
-        <TextView
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="MacConnect"
-            android:textColor="#FFFFFF"
-            android:textSize="22sp"
-            android:textStyle="bold" />
+            android:orientation="vertical">
 
-        <View
-            android:id="@+id/view_header_dot"
-            android:layout_width="10dp"
-            android:layout_height="10dp"
-            android:background="#FF3B30"
-            android:layout_marginEnd="6dp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MacConnect"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/tv_header_status"
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Bluetooth Bridge"
+                android:textColor="#71717A"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Status Pill -->
+        <LinearLayout
+            android:id="@+id/layout_status_pill"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Bağlantı Yok"
-            android:textColor="#8E8E93"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            android:layout_height="32dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_pill"
+            android:paddingStart="10dp"
+            android:paddingEnd="12dp">
+
+            <View
+                android:id="@+id/view_header_dot"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="#EF4444"
+                android:layout_marginEnd="6dp" />
+
+            <TextView
+                android:id="@+id/tv_header_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Bağlantı Yok"
+                android:textColor="#A1A1AA"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
     </LinearLayout>
 
-    <!-- Top Navigation Tabs -->
+    <!-- Segmented Tab Bar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
-        android:background="#161618">
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="12dp">
 
-        <Button
-            android:id="@+id/btn_tab_tools"
-            android:layout_width="0dp"
-            android:layout_height="38dp"
-            android:layout_weight="1"
-            android:text="Bağlantı &amp; Araçlar"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:background="@drawable/bg_tab_selected"
-            android:layout_marginEnd="4dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:orientation="horizontal"
+            android:background="@drawable/bg_tab_container"
+            android:padding="3dp">
 
-        <Button
-            android:id="@+id/btn_tab_history"
-            android:layout_width="0dp"
-            android:layout_height="38dp"
-            android:layout_weight="1"
-            android:text="Bildirim Geçmişi"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="#A0A0A5"
-            android:background="@drawable/bg_tab_unselected"
-            android:layout_marginEnd="4dp" />
+            <Button
+                android:id="@+id/btn_tab_tools"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="⚡ Araçlar"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/bg_tab_selected" />
 
-        <Button
-            android:id="@+id/btn_tab_settings"
-            android:layout_width="0dp"
-            android:layout_height="38dp"
-            android:layout_weight="1"
-            android:text="Ayarlar"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="#A0A0A5"
-            android:background="@drawable/bg_tab_unselected" />
+            <Button
+                android:id="@+id/btn_tab_history"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="📬 Bildirimler"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#71717A"
+                android:background="@drawable/bg_tab_unselected" />
+
+            <Button
+                android:id="@+id/btn_tab_settings"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="⚙️ Pil &amp; Ayarlar"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#71717A"
+                android:background="@drawable/bg_tab_unselected" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- TAB 1: TOOLS & CONNECTION -->
@@ -103,15 +132,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="24dp">
 
-            <!-- Connection Card -->
+            <!-- Hero Connection Card -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:background="@drawable/bg_card"
-                android:padding="16dp"
+                android:padding="18dp"
                 android:layout_marginBottom="14dp">
 
                 <LinearLayout
@@ -122,9 +153,9 @@
 
                     <View
                         android:id="@+id/view_status_dot"
-                        android:layout_width="14dp"
-                        android:layout_height="14dp"
-                        android:background="#FF3B30"
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="#EF4444"
                         android:layout_marginEnd="10dp" />
 
                     <TextView
@@ -132,9 +163,23 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Bağlantı Kesildi"
+                        android:text="Bağlantı Bekleniyor"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_battery_badge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_pill"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingTop="3dp"
+                        android:paddingBottom="3dp"
+                        android:text="🔋 --%"
+                        android:textColor="#10B981"
+                        android:textSize="11sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -143,25 +188,25 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Mac'ten Bluetooth bağlantısı bekleniyor..."
-                    android:textColor="#A0A0A5"
+                    android:textColor="#A1A1AA"
                     android:textSize="13sp"
-                    android:layout_marginTop="4dp"
-                    android:layout_marginBottom="12dp" />
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="14dp" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Eşleşen Mac Cihazı:"
-                    android:textColor="#8E8E93"
+                    android:textColor="#71717A"
                     android:textSize="12sp"
-                    android:layout_marginBottom="4dp" />
+                    android:layout_marginBottom="6dp" />
 
                 <Spinner
                     android:id="@+id/spinner_devices"
                     android:layout_width="match_parent"
-                    android:layout_height="42dp"
+                    android:layout_height="44dp"
                     android:background="@drawable/bg_edittext"
-                    android:layout_marginBottom="10dp" />
+                    android:layout_marginBottom="12dp" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -171,33 +216,33 @@
                     <Button
                         android:id="@+id/btn_connect"
                         android:layout_width="0dp"
-                        android:layout_height="40dp"
+                        android:layout_height="42dp"
                         android:layout_weight="1"
                         android:text="Mac'e Bağlan"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="#FFFFFF"
-                        android:backgroundTint="#007AFF"
+                        android:background="@drawable/bg_btn_primary"
                         android:layout_marginEnd="8dp" />
 
                     <Button
                         android:id="@+id/btn_refresh"
                         android:layout_width="wrap_content"
-                        android:layout_height="40dp"
+                        android:layout_height="42dp"
                         android:text="Yenile"
                         android:textSize="13sp"
                         android:textColor="#FFFFFF"
-                        android:backgroundTint="#2C2C2E" />
+                        android:background="@drawable/bg_btn_secondary" />
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Send Text / Clipboard Card -->
+            <!-- Text & Clipboard Sharing Card -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:background="@drawable/bg_card"
-                android:padding="16dp"
+                android:padding="18dp"
                 android:layout_marginBottom="14dp">
 
                 <TextView
@@ -211,11 +256,11 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Gönderdiğiniz metin Mac panosuna doğrudan kopyalanır."
-                    android:textColor="#8E8E93"
+                    android:text="Yazılan metin veya link Mac'in panosuna anında aktarılır."
+                    android:textColor="#71717A"
                     android:textSize="12sp"
                     android:layout_marginTop="2dp"
-                    android:layout_marginBottom="10dp" />
+                    android:layout_marginBottom="12dp" />
 
                 <EditText
                     android:id="@+id/et_share_text"
@@ -225,12 +270,12 @@
                     android:maxLines="6"
                     android:gravity="top|start"
                     android:background="@drawable/bg_edittext"
-                    android:padding="10dp"
+                    android:padding="12dp"
                     android:hint="Mac'e göndermek istediğiniz metni veya notu yazın..."
-                    android:textColorHint="#636366"
+                    android:textColorHint="#52525B"
                     android:textColor="#FFFFFF"
                     android:textSize="13sp"
-                    android:layout_marginBottom="10dp" />
+                    android:layout_marginBottom="12dp" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -240,34 +285,34 @@
                     <Button
                         android:id="@+id/btn_paste_clipboard"
                         android:layout_width="0dp"
-                        android:layout_height="38dp"
+                        android:layout_height="40dp"
                         android:layout_weight="1"
-                        android:text="Panodan Yapıştır"
+                        android:text="📋 Panodan Yapıştır"
                         android:textSize="12sp"
                         android:textColor="#FFFFFF"
-                        android:backgroundTint="#2C2C2E"
+                        android:background="@drawable/bg_btn_secondary"
                         android:layout_marginEnd="8dp" />
 
                     <Button
                         android:id="@+id/btn_send_text"
                         android:layout_width="0dp"
-                        android:layout_height="38dp"
+                        android:layout_height="40dp"
                         android:layout_weight="1"
-                        android:text="Mac'e Gönder"
+                        android:text="📤 Mac'e Gönder"
                         android:textSize="12sp"
                         android:textStyle="bold"
                         android:textColor="#FFFFFF"
-                        android:backgroundTint="#34C759" />
+                        android:background="@drawable/bg_btn_primary" />
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Send File Card -->
+            <!-- File Transfer Card -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:background="@drawable/bg_card"
-                android:padding="16dp"
+                android:padding="18dp"
                 android:layout_marginBottom="14dp">
 
                 <TextView
@@ -281,28 +326,28 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Fotoğraf veya belgeleri Mac İndirilenler klasörüne aktarır."
-                    android:textColor="#8E8E93"
+                    android:text="Fotoğraf, video veya belgeleri Mac İndirilenler klasörüne aktarır."
+                    android:textColor="#71717A"
                     android:textSize="12sp"
                     android:layout_marginTop="2dp"
-                    android:layout_marginBottom="10dp" />
+                    android:layout_marginBottom="12dp" />
 
                 <Button
                     android:id="@+id/btn_choose_file"
                     android:layout_width="match_parent"
-                    android:layout_height="40dp"
-                    android:text="Dosya Seç ve Mac'e Gönder"
+                    android:layout_height="42dp"
+                    android:text="📂 Dosya Seç ve Gönder"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     android:textColor="#FFFFFF"
-                    android:backgroundTint="#007AFF" />
+                    android:background="@drawable/bg_btn_secondary" />
 
                 <TextView
                     android:id="@+id/tv_file_status"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Henüz dosya seçilmedi"
-                    android:textColor="#8E8E93"
+                    android:textColor="#71717A"
                     android:textSize="12sp"
                     android:layout_marginTop="8dp" />
 
@@ -310,26 +355,25 @@
                     android:id="@+id/progressbar_file"
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
-                    android:layout_height="8dp"
+                    android:layout_height="6dp"
                     android:max="100"
                     android:progress="0"
                     android:visibility="gone"
-                    android:layout_marginTop="6dp" />
+                    android:layout_marginTop="8dp" />
             </LinearLayout>
 
-            <!-- Diagnostics & Logs Card -->
+            <!-- Diagnostics Card -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:background="@drawable/bg_card"
-                android:padding="16dp"
-                android:layout_marginBottom="16dp">
+                android:padding="18dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Hızlı Tanılama &amp; Loglar"
+                    android:text="Tanılama &amp; Loglar"
                     android:textColor="#FFFFFF"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -343,37 +387,39 @@
                     <Button
                         android:id="@+id/btn_test_notif"
                         android:layout_width="0dp"
-                        android:layout_height="38dp"
+                        android:layout_height="40dp"
                         android:layout_weight="1"
                         android:text="Test Bildirimi"
                         android:textSize="12sp"
                         android:textColor="#FFFFFF"
-                        android:backgroundTint="#34C759"
+                        android:background="@drawable/bg_btn_secondary"
                         android:layout_marginEnd="8dp" />
 
                     <Button
                         android:id="@+id/btn_show_logs"
                         android:layout_width="0dp"
-                        android:layout_height="38dp"
+                        android:layout_height="40dp"
                         android:layout_weight="1"
-                        android:text="Logları İncele"
+                        android:text="Geliştirici Logları"
                         android:textSize="12sp"
                         android:textColor="#FFFFFF"
-                        android:backgroundTint="#2C2C2E" />
+                        android:background="@drawable/bg_btn_secondary" />
                 </LinearLayout>
             </LinearLayout>
 
         </LinearLayout>
     </ScrollView>
 
-    <!-- TAB 2: NOTIFICATION HISTORY -->
+    <!-- TAB 2: NOTIFICATION FEED -->
     <LinearLayout
         android:id="@+id/layout_tab_history"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="vertical"
-        android:padding="16dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp"
         android:visibility="gone">
 
         <LinearLayout
@@ -397,10 +443,10 @@
                 android:id="@+id/btn_clear_history"
                 android:layout_width="wrap_content"
                 android:layout_height="34dp"
-                android:text="Geçmişi Temizle"
+                android:text="Temizle"
                 android:textSize="11sp"
-                android:textColor="#FF453A"
-                android:backgroundTint="#2C2C2E" />
+                android:textColor="#EF4444"
+                android:background="@drawable/bg_btn_secondary" />
         </LinearLayout>
 
         <TextView
@@ -408,10 +454,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Henüz kaydedilmiş bildirim yok.\nTelefona gelen bildirimler burada listelenecek ve Mac'e aktarılacaktır."
-            android:textColor="#8E8E93"
+            android:textColor="#71717A"
             android:textSize="13sp"
             android:gravity="center"
-            android:padding="30dp"
+            android:padding="40dp"
             android:visibility="visible" />
 
         <ListView
@@ -424,7 +470,7 @@
 
     </LinearLayout>
 
-    <!-- TAB 3: SETTINGS & PERMISSIONS -->
+    <!-- TAB 3: BATTERY & SETTINGS -->
     <ScrollView
         android:id="@+id/layout_tab_settings"
         android:layout_width="match_parent"
@@ -437,7 +483,69 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="24dp">
+
+            <!-- Battery Optimization Card -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_card"
+                android:orientation="vertical"
+                android:padding="18dp"
+                android:layout_marginBottom="14dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Pil Optimizasyonu &amp; Doze"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_battery_opt_badge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_pill"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingTop="3dp"
+                        android:paddingBottom="3dp"
+                        android:text="Korumalı ✅"
+                        android:textColor="#10B981"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="MacConnect ekran kapalıyken bile arka planda kesintisiz çalışır. Bluetooth RFCOMM donanım seviyesinde dinlenir ve CPU uyku modunda kalarak sıfıra yakın (&lt;%0.1) pil tüketir."
+                    android:textColor="#A1A1AA"
+                    android:textSize="13sp"
+                    android:lineSpacingExtra="3dp"
+                    android:layout_marginBottom="12dp" />
+
+                <Button
+                    android:id="@+id/btn_battery_opt"
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:text="Pil Tasarrufundan Muaf Tut (Önerilen)"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:background="@drawable/bg_btn_primary" />
+            </LinearLayout>
 
             <!-- Permissions Card -->
             <LinearLayout
@@ -445,13 +553,13 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_card"
                 android:orientation="vertical"
-                android:padding="16dp"
+                android:padding="18dp"
                 android:layout_marginBottom="14dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Gerekli İzinler"
+                    android:text="Sistem İzinleri"
                     android:textColor="#FFFFFF"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -471,7 +579,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="Bildirim Erişimi"
-                        android:textColor="#E0E0E0"
+                        android:textColor="#E4E4E7"
                         android:textSize="14sp" />
 
                     <Button
@@ -480,7 +588,7 @@
                         android:layout_height="36dp"
                         android:text="İzin Ver"
                         android:textSize="12sp"
-                        android:backgroundTint="#007AFF"
+                        android:background="@drawable/bg_btn_primary"
                         android:textColor="#FFFFFF" />
                 </LinearLayout>
 
@@ -497,7 +605,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="Bluetooth İzni"
-                        android:textColor="#E0E0E0"
+                        android:textColor="#E4E4E7"
                         android:textSize="14sp" />
 
                     <Button
@@ -506,24 +614,23 @@
                         android:layout_height="36dp"
                         android:text="İzin Ver"
                         android:textSize="12sp"
-                        android:backgroundTint="#007AFF"
+                        android:background="@drawable/bg_btn_primary"
                         android:textColor="#FFFFFF" />
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Xiaomi / MIUI Background Optimization Card -->
+            <!-- Xiaomi / MIUI Background Guide Card -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_card"
                 android:orientation="vertical"
-                android:padding="16dp"
-                android:layout_marginBottom="14dp">
+                android:padding="18dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Redmi / Xiaomi Arka Plan Rehberi"
+                    android:text="Redmi / Xiaomi / MIUI Arka Plan Rehberi"
                     android:textColor="#FFFFFF"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -532,16 +639,16 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="MIUI / HyperOS arka planda çalışan servisleri kapatabilir. Kesintisiz bağlantı için:"
-                    android:textColor="#C7C7CC"
+                    android:text="MIUI / HyperOS arka planda çalışan servisleri agresif şekilde sonlandırabilir. Kesintisiz bağlantı için:"
+                    android:textColor="#A1A1AA"
                     android:textSize="13sp"
                     android:layout_marginBottom="10dp" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="1. Otomatik Başlatma (Autostart) iznini açın.\n2. Pil Tasarrufu ayarını 'Kısıtlama Yok' (No restrictions) yapın.\n3. Son Uygulamalar ekranında MacConnect kartını aşağı çekip kilitleyin."
-                    android:textColor="#8E8E93"
+                    android:text="1. Otomatik Başlatma (Autostart) iznini açık tutun.\n2. Pil Tasarrufu ayarını 'Kısıtlama Yok' yapın.\n3. Son Uygulamalar ekranında MacConnect kartını aşağı çekip kilitleyin."
+                    android:textColor="#71717A"
                     android:textSize="12sp"
                     android:lineSpacingExtra="4dp"
                     android:layout_marginBottom="12dp" />
@@ -549,11 +656,11 @@
                 <Button
                     android:id="@+id/btn_battery_settings"
                     android:layout_width="match_parent"
-                    android:layout_height="38dp"
-                    android:text="Uygulama Bilgisi / Pil Ayarları"
+                    android:layout_height="40dp"
+                    android:text="Uygulama Bilgisi / Ayarları Aç"
                     android:textSize="12sp"
                     android:textColor="#FFFFFF"
-                    android:backgroundTint="#2C2C2E" />
+                    android:background="@drawable/bg_btn_secondary" />
             </LinearLayout>
 
         </LinearLayout>

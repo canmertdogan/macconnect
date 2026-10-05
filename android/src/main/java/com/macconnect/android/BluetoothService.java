@@ -49,6 +49,20 @@ public class BluetoothService extends Service {
 
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private boolean mIsRunning = false;
+    private int mCurrentBatteryLevel = 100;
+
+    private final BroadcastReceiver mBatteryReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent != null) {
+                int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                if (level >= 0 && scale > 0) {
+                    mCurrentBatteryLevel = (level * 100) / scale;
+                }
+            }
+        }
+    };
 
     public static BluetoothService getInstance() {
         return sInstance;
@@ -61,8 +75,12 @@ public class BluetoothService extends Service {
         mIsRunning = true;
         mAdapter = BluetoothAdapter.getDefaultAdapter();
 
+        try {
+            registerReceiver(mBatteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        } catch (Exception ignored) {}
+
         createNotificationChannel();
-        startForeground(NOTIF_ID, buildForegroundNotification("Waiting for Mac Bluetooth..."));
+        startForeground(NOTIF_ID, buildForegroundNotification("MacConnect aktif"));
 
         log("Bluetooth Service started.");
         startServerListening();
@@ -90,6 +108,9 @@ public class BluetoothService extends Service {
     public void onDestroy() {
         super.onDestroy();
         mIsRunning = false;
+        try {
+            unregisterReceiver(mBatteryReceiver);
+        } catch (Exception ignored) {}
         disconnect();
         sInstance = null;
     }
@@ -308,17 +329,7 @@ public class BluetoothService extends Service {
     }
 
     private int getBatteryLevel() {
-        try {
-            Intent batteryIntent = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-            if (batteryIntent != null) {
-                int level = batteryIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-                int scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-                if (level >= 0 && scale > 0) {
-                    return (level * 100) / scale;
-                }
-            }
-        } catch (Exception ignored) {}
-        return 100;
+        return mCurrentBatteryLevel > 0 ? mCurrentBatteryLevel : 100;
     }
 
     private void handleIncomingMessage(String line) {
@@ -635,22 +646,6 @@ public class BluetoothService extends Service {
             }, "ConnectedWriterThread");
             writerThread.start();
 
-            // Heartbeat loop runnable
-            Runnable pingRunnable = new Runnable() {
-                @Override
-                public void run() {
-                    if (mRunning && mState == Constants.STATE_CONNECTED) {
-                        try {
-                            JSONObject ping = new JSONObject();
-                            ping.put("type", "ping");
-                            write(ping.toString() + "\n");
-                        } catch (Exception ignored) {}
-                        mHandler.postDelayed(this, 25000);
-                    }
-                }
-            };
-            mHandler.postDelayed(pingRunnable, 25000);
-
             // Reader
             try {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(mmInStream, StandardCharsets.UTF_8));
@@ -671,7 +666,6 @@ public class BluetoothService extends Service {
             } finally {
                 mRunning = false;
                 writerThread.interrupt();
-                mHandler.removeCallbacks(pingRunnable);
                 cancel();
                 connectionLost();
             }
