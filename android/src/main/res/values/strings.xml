@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MacConnect</string>
+    <string name="notification_service_label">MacConnect Notification Service</string>
+    <string name="notif_channel_name">MacConnect Bluetooth Bridge</string>
+    <string name="notif_channel_desc">Maintains Bluetooth connection to Mac for notification forwarding</string>
+</resources>
