@@ -17,7 +17,15 @@ import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Looper;
+import android.provider.ContactsContract;
+import android.telecom.TelecomManager;
+import android.telephony.PhoneStateListener;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import org.json.JSONObject;
@@ -50,6 +58,14 @@ public class BluetoothService extends Service {
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private boolean mIsRunning = false;
     private int mCurrentBatteryLevel = 100;
+
+    // Telephony and Call management
+    private TelephonyManager mTelephonyManager;
+    private PhoneStateListener mPhoneStateListener;
+    private boolean mIsCellularRinging = false;
+    private String mActiveVoipCallKey = null;
+    private Notification.Action mActiveVoipAnswerAction = null;
+    private Notification.Action mActiveVoipDeclineAction = null;
 
     private final BroadcastReceiver mBatteryReceiver = new BroadcastReceiver() {
         @Override
@@ -84,6 +100,7 @@ public class BluetoothService extends Service {
 
         log("Bluetooth Service started.");
         startServerListening();
+        initTelephonyListener();
     }
 
     @Override
@@ -111,6 +128,12 @@ public class BluetoothService extends Service {
         try {
             unregisterReceiver(mBatteryReceiver);
         } catch (Exception ignored) {}
+        if (mTelephonyManager != null && mPhoneStateListener != null) {
+            try {
+                mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_NONE);
+            } catch (Exception ignored) {}
+            mPhoneStateListener = null;
+        }
         disconnect();
         sInstance = null;
     }
@@ -348,9 +371,225 @@ public class BluetoothService extends Service {
                 if (NotificationListener.getInstance() != null && id != null) {
                     NotificationListener.getInstance().cancelNotificationByKey(id);
                 }
+            } else if ("call_action".equals(type)) {
+                String action = json.optString("action");
+                handleCallAction(action);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error parsing incoming JSON: " + line, e);
+        }
+    }
+
+    // --- Call Management & Telephony ---
+
+    public void refreshTelephonyListener() {
+        initTelephonyListener();
+    }
+
+    private synchronized void initTelephonyListener() {
+        if (mTelephonyManager == null) {
+            mTelephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+        }
+        if (mTelephonyManager == null) return;
+
+        if (mPhoneStateListener == null) {
+            try {
+                mPhoneStateListener = new PhoneStateListener() {
+                    @Override
+                    public void onCallStateChanged(int state, String incomingNumber) {
+                        super.onCallStateChanged(state, incomingNumber);
+                        handleCellularCallState(state, incomingNumber);
+                    }
+                };
+                mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
+                log("Telephony call listener registered.");
+            } catch (Exception e) {
+                Log.e(TAG, "Error registering phone state listener", e);
+            }
+        }
+    }
+
+    private void handleCellularCallState(int state, String incomingNumber) {
+        if (state == TelephonyManager.CALL_STATE_RINGING) {
+            mIsCellularRinging = true;
+            String callerName = resolveContactName(incomingNumber);
+            if (callerName == null || callerName.isEmpty()) {
+                callerName = (incomingNumber != null && !incomingNumber.isEmpty()) ? incomingNumber : "Bilinmeyen Numara";
+            }
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("type", "incoming_call");
+                obj.put("call_type", "cellular");
+                obj.put("app_name", "Telefon");
+                obj.put("name", callerName);
+                obj.put("number", incomingNumber != null ? incomingNumber : "");
+                sendJson(obj);
+                log("Incoming cellular call ringing: " + callerName + " (" + incomingNumber + ")");
+            } catch (Exception e) {
+                Log.e(TAG, "Error sending cellular incoming call JSON", e);
+            }
+        } else if (state == TelephonyManager.CALL_STATE_IDLE || state == TelephonyManager.CALL_STATE_OFFHOOK) {
+            if (mIsCellularRinging) {
+                mIsCellularRinging = false;
+                try {
+                    JSONObject obj = new JSONObject();
+                    obj.put("type", "call_ended");
+                    sendJson(obj);
+                    log("Cellular call ended or answered (state: " + state + ")");
+                } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    public String resolveContactName(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) return "";
+        Cursor cursor = null;
+        try {
+            if (checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                return "";
+            }
+            Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
+            cursor = getContentResolver().query(uri, new String[]{ContactsContract.PhoneLookup.DISPLAY_NAME}, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int nameIdx = cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME);
+                if (nameIdx >= 0) {
+                    return cursor.getString(nameIdx);
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+        return "";
+    }
+
+    public synchronized void registerVoipCall(String key, String packageName, String appName, String title, String subText, Notification.Action answer, Notification.Action decline) {
+        mActiveVoipCallKey = key;
+        mActiveVoipAnswerAction = answer;
+        mActiveVoipDeclineAction = decline;
+
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("type", "incoming_call");
+            obj.put("call_type", "voip");
+            obj.put("package_name", packageName != null ? packageName : "");
+            obj.put("app_name", appName != null ? appName : "VoIP");
+            obj.put("name", (title != null && !title.isEmpty()) ? title : appName);
+            obj.put("number", (subText != null && !subText.isEmpty()) ? subText : appName);
+            sendJson(obj);
+            log("Incoming VoIP call (" + appName + "): " + title);
+        } catch (Exception e) {
+            Log.e(TAG, "Error building VoIP incoming call JSON", e);
+        }
+    }
+
+    public synchronized void unregisterVoipCall(String key) {
+        if (key != null && key.equals(mActiveVoipCallKey)) {
+            mActiveVoipCallKey = null;
+            mActiveVoipAnswerAction = null;
+            mActiveVoipDeclineAction = null;
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("type", "call_ended");
+                sendJson(obj);
+                log("VoIP call ended/dismissed");
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private void handleCallAction(String action) {
+        log("Received call action from Mac: " + action);
+        if ("answer".equalsIgnoreCase(action)) {
+            // 1. Check if there is an active VoIP call
+            if (mActiveVoipAnswerAction != null && mActiveVoipAnswerAction.actionIntent != null) {
+                try {
+                    mActiveVoipAnswerAction.actionIntent.send();
+                    log("Answered VoIP call via PendingIntent");
+                    return;
+                } catch (Exception e) {
+                    log("Error answering VoIP call via PendingIntent: " + e.getMessage());
+                }
+            }
+
+            // 2. Cellular call answer via TelecomManager
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    TelecomManager telecomManager = (TelecomManager) getSystemService(Context.TELECOM_SERVICE);
+                    if (telecomManager != null) {
+                        if (checkSelfPermission(Manifest.permission.ANSWER_PHONE_CALLS) == PackageManager.PERMISSION_GRANTED) {
+                            telecomManager.acceptRingingCall();
+                            log("Accepted ringing call via TelecomManager");
+                            return;
+                        } else {
+                            log("ANSWER_PHONE_CALLS permission not granted!");
+                        }
+                    }
+                }
+            } catch (SecurityException se) {
+                log("SecurityException answering call: " + se.getMessage());
+            } catch (Exception e) {
+                log("Error accepting call: " + e.getMessage());
+            }
+
+            // 3. Fallback: simulate headset hook key event
+            try {
+                android.media.AudioManager audioManager = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                if (audioManager != null) {
+                    long now = android.os.SystemClock.uptimeMillis();
+                    android.view.KeyEvent down = new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_HEADSETHOOK, 0);
+                    android.view.KeyEvent up = new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_HEADSETHOOK, 0);
+                    audioManager.dispatchMediaKeyEvent(down);
+                    audioManager.dispatchMediaKeyEvent(up);
+                    log("Dispatched HEADSETHOOK event for answering call");
+                }
+            } catch (Exception e) {
+                log("Fallback headset hook failed: " + e.getMessage());
+            }
+        } else if ("reject".equalsIgnoreCase(action) || "decline".equalsIgnoreCase(action) || "end".equalsIgnoreCase(action)) {
+            // 1. Check active VoIP call
+            if (mActiveVoipDeclineAction != null && mActiveVoipDeclineAction.actionIntent != null) {
+                try {
+                    mActiveVoipDeclineAction.actionIntent.send();
+                    log("Declined VoIP call via PendingIntent");
+                    return;
+                } catch (Exception e) {
+                    log("Error declining VoIP call via PendingIntent: " + e.getMessage());
+                }
+            }
+
+            // 2. Cellular call decline via TelecomManager
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    TelecomManager telecomManager = (TelecomManager) getSystemService(Context.TELECOM_SERVICE);
+                    if (telecomManager != null) {
+                        if (checkSelfPermission(Manifest.permission.ANSWER_PHONE_CALLS) == PackageManager.PERMISSION_GRANTED) {
+                            telecomManager.endCall();
+                            log("Ended call via TelecomManager");
+                            return;
+                        }
+                    }
+                }
+            } catch (SecurityException se) {
+                log("SecurityException ending call: " + se.getMessage());
+            } catch (Exception e) {
+                log("Error ending call: " + e.getMessage());
+            }
+
+            // 3. Fallback reflection for ITelephony endCall on older Android versions
+            try {
+                if (mTelephonyManager != null) {
+                    Method getITelephony = mTelephonyManager.getClass().getDeclaredMethod("getITelephony");
+                    getITelephony.setAccessible(true);
+                    Object iTelephony = getITelephony.invoke(mTelephonyManager);
+                    if (iTelephony != null) {
+                        Method endCall = iTelephony.getClass().getDeclaredMethod("endCall");
+                        endCall.invoke(iTelephony);
+                        log("Ended call via ITelephony reflection");
+                    }
+                }
+            } catch (Exception e) {
+                log("Fallback ITelephony reflection failed: " + e.getMessage());
+            }
         }
     }
 

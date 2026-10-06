@@ -12,17 +12,19 @@ A lightweight Bluetooth utility for Android and macOS. Forwards notifications, s
 
 ## What It Does
 
-- **Notifications on Mac:** Android notifications (WhatsApp, Telegram, Slack, SMS, etc.) appear in macOS Notification Center with sound, app name, and text.
+- **Call Answering from Mac:** When your phone rings (cellular or VoIP like WhatsApp/Telegram), MacConnect alerts you on macOS with "Cevapla" (Answer) and "Reddet" (Decline) buttons. Answering connects the call immediately without touching the phone.
+- **Notifications on Mac:** Android notifications (WhatsApp, Telegram, Slack, SMS, etc.) appear in macOS Notification Center with app icon, sound, app name, and full text.
+- **Notification History & Details:** Past notifications are saved on the phone. Tapping any notification opens a detail view with full unclipped text, timestamp, and a copy button.
 - **Clipboard Sharing:** Send text or notes from your phone straight to your Mac clipboard (`Cmd+V` to paste).
 - **File Transfer:** Send photos, videos, or documents directly to `~/Downloads/MacConnect/` over Bluetooth.
-- **Notification History:** Saves past notifications locally on the phone so you can review them anytime.
 - **Menu Bar Indicator:** Simple status dot in the macOS menu bar:
   - 🟢 Connected
   - 🟡 Connecting
   - 🔴 Disconnected
+  - 📞 Incoming Call (with Answer & Reject quick actions)
   Also shows phone battery percentage and recent notifications.
 - **Offline & Private:** All communication is strictly local over Bluetooth RFCOMM sockets. No network setup, no servers, no accounts.
-- **Lightweight:** Pure native code. Android APK is ~49 KB; macOS app is ~80 KB.
+- **Lightweight:** Pure native code. Android APK is ~130 KB; macOS app is ~110 KB.
 
 ---
 
@@ -104,6 +106,9 @@ Newline-delimited JSON packets over Bluetooth RFCOMM (UUID `94f39d29-7d6d-437d-9
 | `file_start` | Phone → Mac | `file_name`, `file_size`, `total_chunks` | Initiates file transfer |
 | `file_chunk` | Phone → Mac | `file_name`, `chunk_index`, `data` (base64) | 12 KB file chunk |
 | `file_end` | Phone → Mac | `file_name` | Saves file to disk |
+| `incoming_call` | Phone → Mac | `name`, `number`, `app_name`, `call_type` | Rings Mac with caller details |
+| `call_action` | Mac → Phone | `action` (`answer` / `reject`) | Answers or rejects the call |
+| `call_ended` | Phone → Mac | - | Dismisses incoming call banner |
 | `ping` / `pong` | Both | `battery` | Heartbeat & battery updates |
 
 ---

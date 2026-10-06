@@ -10,6 +10,12 @@
 @property (nonatomic, strong) NSMenuItem *recentNotificationsMenuItem;
 @property (nonatomic, strong) NSMutableArray<NSDictionary *> *recentNotifications;
 
+// Incoming Call Properties
+@property (nonatomic, strong) NSDictionary *activeIncomingCall;
+@property (nonatomic, strong) NSMenuItem *incomingCallMenuItem;
+@property (nonatomic, strong) NSMenuItem *answerCallMenuItem;
+@property (nonatomic, strong) NSMenuItem *rejectCallMenuItem;
+
 @end
 
 @implementation AppDelegate
@@ -50,6 +56,21 @@
     self.batteryMenuItem = [[NSMenuItem alloc] initWithTitle:@"🔋 Battery: --" action:nil keyEquivalent:@""];
     [self.batteryMenuItem setHidden:YES];
     [self.statusMenu addItem:self.batteryMenuItem];
+
+    // Incoming Call Menu Items
+    self.incomingCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"📞 Gelen Arama: --" action:nil keyEquivalent:@""];
+    [self.incomingCallMenuItem setHidden:YES];
+    [self.statusMenu addItem:self.incomingCallMenuItem];
+
+    self.answerCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"   ▶️ Aramayı Cevapla" action:@selector(answerCallClicked:) keyEquivalent:@""];
+    [self.answerCallMenuItem setTarget:self];
+    [self.answerCallMenuItem setHidden:YES];
+    [self.statusMenu addItem:self.answerCallMenuItem];
+
+    self.rejectCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"   ❌ Aramayı Reddet" action:@selector(rejectCallClicked:) keyEquivalent:@""];
+    [self.rejectCallMenuItem setTarget:self];
+    [self.rejectCallMenuItem setHidden:YES];
+    [self.statusMenu addItem:self.rejectCallMenuItem];
 
     [self.statusMenu addItem:[NSMenuItem separatorItem]];
 
@@ -167,6 +188,43 @@
     [self updateRecentSubmenu];
 }
 
+- (void)answerCallClicked:(id)sender {
+    [[BluetoothBridge sharedBridge] sendCallAction:@"answer"];
+    [[NotificationPresenter sharedPresenter] dismissIncomingCall];
+    self.activeIncomingCall = nil;
+    [self updateCallMenuState];
+}
+
+- (void)rejectCallClicked:(id)sender {
+    [[BluetoothBridge sharedBridge] sendCallAction:@"reject"];
+    [[NotificationPresenter sharedPresenter] dismissIncomingCall];
+    self.activeIncomingCall = nil;
+    [self updateCallMenuState];
+}
+
+- (void)updateCallMenuState {
+    if (self.activeIncomingCall) {
+        NSString *name = self.activeIncomingCall[@"name"] ? self.activeIncomingCall[@"name"] : @"Arayan";
+        NSString *num = self.activeIncomingCall[@"number"] ? self.activeIncomingCall[@"number"] : @"";
+        self.statusItem.button.title = @"📞";
+        self.incomingCallMenuItem.title = [NSString stringWithFormat:@"📞 Gelen Arama: %@ (%@)", name, num];
+        self.incomingCallMenuItem.hidden = NO;
+        self.answerCallMenuItem.hidden = NO;
+        self.rejectCallMenuItem.hidden = NO;
+    } else {
+        self.incomingCallMenuItem.hidden = YES;
+        self.answerCallMenuItem.hidden = YES;
+        self.rejectCallMenuItem.hidden = YES;
+        if ([BluetoothBridge sharedBridge].state == MacConnectStateConnected) {
+            self.statusItem.button.title = @"🟢";
+        } else if ([BluetoothBridge sharedBridge].state == MacConnectStateConnecting) {
+            self.statusItem.button.title = @"🟡";
+        } else {
+            self.statusItem.button.title = @"🔴";
+        }
+    }
+}
+
 - (void)quitClicked:(id)sender {
     [[BluetoothBridge sharedBridge] stop];
     [NSApp terminate:nil];
@@ -176,15 +234,21 @@
 
 - (void)bridge:(BluetoothBridge *)bridge didChangeState:(MacConnectState)state deviceName:(NSString *)deviceName {
     if (state == MacConnectStateConnected) {
-        self.statusItem.button.title = @"🟢";
+        if (!self.activeIncomingCall) {
+            self.statusItem.button.title = @"🟢";
+        }
         self.statusItem.button.toolTip = [NSString stringWithFormat:@"MacConnect: Connected to %@", (deviceName.length > 0 ? deviceName : @"Android")];
         self.statusMenuItem.title = [NSString stringWithFormat:@"🟢 Connected: %@", (deviceName.length > 0 ? deviceName : @"Android")];
     } else if (state == MacConnectStateConnecting) {
-        self.statusItem.button.title = @"🟡";
+        if (!self.activeIncomingCall) {
+            self.statusItem.button.title = @"🟡";
+        }
         self.statusItem.button.toolTip = [NSString stringWithFormat:@"MacConnect: Connecting to %@...", (deviceName.length > 0 ? deviceName : @"Android")];
         self.statusMenuItem.title = [NSString stringWithFormat:@"🟡 Connecting: %@...", (deviceName.length > 0 ? deviceName : @"Android")];
     } else {
-        self.statusItem.button.title = @"🔴";
+        if (!self.activeIncomingCall) {
+            self.statusItem.button.title = @"🔴";
+        }
         self.statusItem.button.toolTip = @"MacConnect: Disconnected (Waiting for phone...)";
         self.statusMenuItem.title = @"🔴 Disconnected (Waiting...)";
         self.batteryMenuItem.hidden = YES;
@@ -252,6 +316,25 @@
                                                                        body:[NSString stringWithFormat:@"%@ (%@) ~/Downloads/MacConnect klasörüne kaydedildi.", fileName, sizeStr]
                                                                     subText:@"Telefondan Gönderildi"
                                                                       sound:YES];
+}
+
+- (void)bridge:(BluetoothBridge *)bridge didReceiveIncomingCall:(NSDictionary *)callInfo {
+    self.activeIncomingCall = callInfo;
+    [self updateCallMenuState];
+
+    NSString *name = callInfo[@"name"];
+    NSString *number = callInfo[@"number"];
+    NSString *appName = callInfo[@"app_name"];
+
+    [[NotificationPresenter sharedPresenter] presentIncomingCallWithName:name
+                                                                  number:number
+                                                                 appName:appName];
+}
+
+- (void)bridgeDidEndCall:(BluetoothBridge *)bridge {
+    self.activeIncomingCall = nil;
+    [self updateCallMenuState];
+    [[NotificationPresenter sharedPresenter] dismissIncomingCall];
 }
 
 @end

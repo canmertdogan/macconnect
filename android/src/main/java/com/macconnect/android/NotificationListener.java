@@ -67,6 +67,21 @@ public class NotificationListener extends NotificationListenerService {
         String text = (bigTextCs != null && bigTextCs.length() > 0) ? bigTextCs.toString() : (textCs != null ? textCs.toString() : "");
         String subText = subTextCs != null ? subTextCs.toString() : "";
 
+        // Check for InboxStyle text lines (multi-message notifications)
+        CharSequence[] textLines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES);
+        if (textLines != null && textLines.length > 0) {
+            StringBuilder sb = new StringBuilder();
+            if (text.length() > 0) {
+                sb.append(text).append("\n");
+            }
+            for (CharSequence line : textLines) {
+                if (line != null && line.length() > 0) {
+                    sb.append(line).append("\n");
+                }
+            }
+            text = sb.toString().trim();
+        }
+
         // If both title and text are blank, ignore
         if (title.trim().isEmpty() && text.trim().isEmpty()) {
             return;
@@ -76,6 +91,30 @@ public class NotificationListener extends NotificationListenerService {
         String iconB64 = getAppIconBase64(packageName);
 
         BluetoothService btService = BluetoothService.getInstance();
+
+        // VoIP / Call Detection (WhatsApp, Telegram, etc.)
+        boolean isCallCategory = Notification.CATEGORY_CALL.equals(notification.category);
+        Notification.Action answerAction = null;
+        Notification.Action declineAction = null;
+
+        if (notification.actions != null) {
+            for (Notification.Action act : notification.actions) {
+                if (act == null || act.title == null) continue;
+                String actTitle = act.title.toString().toLowerCase(java.util.Locale.ROOT);
+                if (actTitle.contains("cevapla") || actTitle.contains("yanıtla") || actTitle.contains("answer") || actTitle.contains("accept")) {
+                    answerAction = act;
+                } else if (actTitle.contains("reddet") || actTitle.contains("decline") || actTitle.contains("dismiss") || actTitle.contains("iptal") || actTitle.contains("asla")) {
+                    declineAction = act;
+                }
+            }
+        }
+
+        if (isCallCategory || (answerAction != null && declineAction != null)) {
+            if (btService != null) {
+                btService.registerVoipCall(sbn.getKey(), packageName, appName, title, subText, answerAction, declineAction);
+            }
+        }
+
         if (btService != null) {
             btService.sendNotification(
                     sbn.getKey(),
@@ -103,6 +142,7 @@ public class NotificationListener extends NotificationListenerService {
 
         BluetoothService btService = BluetoothService.getInstance();
         if (btService != null) {
+            btService.unregisterVoipCall(sbn.getKey());
             btService.sendNotificationRemoved(sbn.getKey(), sbn.getPackageName());
         }
     }

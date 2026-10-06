@@ -17,6 +17,8 @@ typedef NS_ENUM(NSInteger, MacConnectState) {
 - (void)bridge:(BluetoothBridge *)bridge didLogMessage:(NSString *)message;
 - (void)bridge:(BluetoothBridge *)bridge didReceiveClipboardText:(NSString *)text;
 - (void)bridge:(BluetoothBridge *)bridge didReceiveFileAtPath:(NSString *)filePath fileName:(NSString *)fileName fileSize:(NSUInteger)fileSize;
+- (void)bridge:(BluetoothBridge *)bridge didReceiveIncomingCall:(NSDictionary *)callInfo;
+- (void)bridgeDidEndCall:(BluetoothBridge *)bridge;
 @end
 
 @interface BluetoothBridge : NSObject <IOBluetoothRFCOMMChannelDelegate>
@@ -35,6 +37,7 @@ typedef NS_ENUM(NSInteger, MacConnectState) {
 - (void)connectToPairedPhone;
 - (void)disconnect;
 - (void)sendDismissForNotificationId:(NSString *)notifId;
+- (void)sendCallAction:(NSString *)action;
 - (NSArray<IOBluetoothDevice *> *)pairedPhones;
 
 @end

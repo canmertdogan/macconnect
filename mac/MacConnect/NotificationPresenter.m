@@ -1,4 +1,5 @@
 #import "NotificationPresenter.h"
+#import "BluetoothBridge.h"
 #import <AppKit/AppKit.h>
 
 @interface NotificationPresenter ()
@@ -28,6 +29,22 @@
 - (void)setupAuthorization {
     UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
     center.delegate = self;
+
+    // Call Action Category
+    UNNotificationAction *answerAction = [UNNotificationAction actionWithIdentifier:@"ACTION_ANSWER"
+                                                                              title:@"📞 Cevapla"
+                                                                            options:UNNotificationActionOptionForeground];
+    UNNotificationAction *rejectAction = [UNNotificationAction actionWithIdentifier:@"ACTION_REJECT"
+                                                                              title:@"❌ Reddet"
+                                                                            options:UNNotificationActionOptionDestructive];
+
+    UNNotificationCategory *callCategory = [UNNotificationCategory categoryWithIdentifier:@"MC_INCOMING_CALL"
+                                                                                   actions:@[answerAction, rejectAction]
+                                                                         intentIdentifiers:@[]
+                                                                                   options:UNNotificationCategoryOptionCustomDismissAction];
+
+    NSSet *categories = [NSSet setWithObject:callCategory];
+    [center setNotificationCategories:categories];
     
     [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge)
                           completionHandler:^(BOOL granted, NSError * _Nullable error) {
@@ -43,6 +60,20 @@
          withCompletionHandler:(void (^)(UNNotificationPresentationOptions options))completionHandler {
     // Force macOS to always display the banner and play sound even when app is active
     completionHandler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionSound | UNNotificationPresentationOptionList);
+}
+
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+didReceiveNotificationResponse:(UNNotificationResponse *)response
+         withCompletionHandler:(void (^)(void))completionHandler {
+    NSString *actionId = response.actionIdentifier;
+    if ([@"ACTION_ANSWER" isEqualToString:actionId]) {
+        [[BluetoothBridge sharedBridge] sendCallAction:@"answer"];
+        [self dismissIncomingCall];
+    } else if ([@"ACTION_REJECT" isEqualToString:actionId]) {
+        [[BluetoothBridge sharedBridge] sendCallAction:@"reject"];
+        [self dismissIncomingCall];
+    }
+    completionHandler();
 }
 
 #pragma mark - Presentation
@@ -156,6 +187,49 @@
     if (errorInfo) {
         NSLog(@"[NotificationPresenter] AppleScript error: %@", errorInfo);
     }
+}
+
+- (void)presentIncomingCallWithName:(NSString *)name
+                             number:(NSString *)number
+                            appName:(NSString *)appName {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSString *caller = (name && name.length > 0) ? name : @"Bilinmeyen Arayan";
+        NSString *num = (number && number.length > 0) ? number : @"";
+        NSString *sourceApp = (appName && appName.length > 0) ? appName : @"Telefon";
+
+        UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
+        content.title = [NSString stringWithFormat:@"📞 Gelen Arama: %@", caller];
+        content.subtitle = sourceApp;
+        content.body = num.length > 0 ? num : @"Mac'ten yanıtlayabilir veya reddedebilirsiniz.";
+        content.sound = [UNNotificationSound defaultSound];
+        content.categoryIdentifier = @"MC_INCOMING_CALL";
+
+        UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:@"mc_incoming_call"
+                                                                              content:content
+                                                                              trigger:nil];
+
+        UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+        [center addNotificationRequest:request withCompletionHandler:^(NSError * _Nullable error) {
+            if (error) {
+                NSLog(@"[NotificationPresenter] Error presenting call: %@", error);
+            }
+        }];
+
+        if (!self.isAuthorized) {
+            [self deliverViaAppleScriptWithTitle:[NSString stringWithFormat:@"📞 Gelen Arama: %@", caller]
+                                        subtitle:sourceApp
+                                            body:num
+                                           sound:YES];
+        }
+    });
+}
+
+- (void)dismissIncomingCall {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+        [center removePendingNotificationRequestsWithIdentifiers:@[@"mc_incoming_call"]];
+        [center removeDeliveredNotificationsWithIdentifiers:@[@"mc_incoming_call"]];
+    });
 }
 
 @end

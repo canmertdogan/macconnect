@@ -20,6 +20,13 @@
 @property (nonatomic, assign) NSInteger fileReceiveExpectedChunks;
 @property (nonatomic, assign) NSInteger fileReceiveReceivedChunks;
 
+- (void)log:(NSString *)message;
+- (void)notifyStateChanged;
+- (void)sendHandshakeAck;
+- (void)sendData:(NSData *)data;
+- (void)resetToDisconnected;
+- (void)processIncomingPacket:(NSData *)lineData;
+
 @end
 
 @implementation BluetoothBridge
@@ -368,6 +375,20 @@
             });
             [self log:[NSString stringWithFormat:@"Copied text from phone to Mac clipboard (%lu chars)", (unsigned long)text.length]];
         }
+    } else if ([@"incoming_call" isEqualToString:type]) {
+        [self log:[NSString stringWithFormat:@"Incoming call: %@ (%@)", json[@"name"], json[@"number"]]];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if ([self.delegate respondsToSelector:@selector(bridge:didReceiveIncomingCall:)]) {
+                [self.delegate bridge:self didReceiveIncomingCall:json];
+            }
+        });
+    } else if ([@"call_ended" isEqualToString:type]) {
+        [self log:@"Call ended on phone"];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if ([self.delegate respondsToSelector:@selector(bridgeDidEndCall:)]) {
+                [self.delegate bridgeDidEndCall:self];
+            }
+        });
     } else if ([@"file_start" isEqualToString:type]) {
         NSString *fileName = json[@"file_name"];
         if (!fileName || fileName.length == 0) {
@@ -443,6 +464,21 @@
         NSMutableData *line = [NSMutableData dataWithData:data];
         [line appendBytes:"\n" length:1];
         [self sendData:line];
+    }
+}
+
+- (void)sendCallAction:(NSString *)action {
+    if (!action || action.length == 0) return;
+    NSDictionary *cmd = @{
+        @"type": @"call_action",
+        @"action": action
+    };
+    NSData *data = [NSJSONSerialization dataWithJSONObject:cmd options:0 error:nil];
+    if (data) {
+        NSMutableData *line = [NSMutableData dataWithData:data];
+        [line appendBytes:"\n" length:1];
+        [self sendData:line];
+        [self log:[NSString stringWithFormat:@"Sent call action: %@", action]];
     }
 }
 

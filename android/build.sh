@@ -29,8 +29,8 @@ echo "[2/7] Linking resources and generating R.java..."
 "$BUILD_TOOLS/aapt2" link -I "$PLATFORM" \
     --min-sdk-version 21 \
     --target-sdk-version 33 \
-    --version-code 2 \
-    --version-name "1.0.1" \
+    --version-code 3 \
+    --version-name "1.0.2" \
     --manifest src/main/AndroidManifest.xml \
     -o build/base.apk \
     --java build/gen \

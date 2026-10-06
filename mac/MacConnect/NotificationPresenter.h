@@ -21,4 +21,10 @@
                            packageName:(NSString *)packageName
                                  sound:(BOOL)playSound;
 
+- (void)presentIncomingCallWithName:(NSString *)name
+                             number:(NSString *)number
+                            appName:(NSString *)appName;
+
+- (void)dismissIncomingCall;
+
 @end

@@ -43,6 +43,7 @@ import java.util.Set;
 
 public class MainActivity extends Activity {
     private static final int REQ_BT_PERMS = 101;
+    private static final int REQ_CALL_PERMS = 102;
     private static final int REQ_PICK_FILE = 201;
 
     // Header & Tabs
@@ -94,6 +95,8 @@ public class MainActivity extends Activity {
     private Button mBtnGrantNotif;
     private TextView mTvBtPermStatus;
     private Button mBtnGrantBt;
+    private TextView mTvCallPermStatus;
+    private Button mBtnGrantCall;
     private Button mBtnBatterySettings;
 
     // Bluetooth Devices
@@ -176,6 +179,8 @@ public class MainActivity extends Activity {
         mBtnGrantNotif = findViewById(R.id.btn_grant_notif);
         mTvBtPermStatus = findViewById(R.id.tv_bt_perm_status);
         mBtnGrantBt = findViewById(R.id.btn_grant_bt);
+        mTvCallPermStatus = findViewById(R.id.tv_call_perm_status);
+        mBtnGrantCall = findViewById(R.id.btn_grant_call);
         mBtnBatterySettings = findViewById(R.id.btn_battery_settings);
 
         setDotColor(Color.parseColor("#EF4444"));
@@ -285,6 +290,13 @@ public class MainActivity extends Activity {
             }
         });
 
+        mBtnGrantCall.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                requestCallPermissions();
+            }
+        });
+
         mBtnBatterySettings.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -346,6 +358,90 @@ public class MainActivity extends Activity {
     private void setupNotificationHistory() {
         mHistoryAdapter = new NotificationHistoryAdapter(this);
         mLvHistory.setAdapter(mHistoryAdapter);
+
+        mLvHistory.setOnItemClickListener(new android.widget.AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                NotificationItem item = mHistoryAdapter.getItem(position);
+                if (item != null) {
+                    showNotificationDetailDialog(item);
+                }
+            }
+        });
+    }
+
+    private void showNotificationDetailDialog(final NotificationItem item) {
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_notification_detail, null);
+
+        android.widget.ImageView ivIcon = dialogView.findViewById(R.id.iv_detail_icon);
+        TextView tvAppName = dialogView.findViewById(R.id.tv_detail_app_name);
+        TextView tvTime = dialogView.findViewById(R.id.tv_detail_time);
+        TextView tvPackage = dialogView.findViewById(R.id.tv_detail_package);
+        TextView tvTitle = dialogView.findViewById(R.id.tv_detail_title);
+        TextView tvSubtext = dialogView.findViewById(R.id.tv_detail_subtext);
+        TextView tvBody = dialogView.findViewById(R.id.tv_detail_body);
+        Button btnCopy = dialogView.findViewById(R.id.btn_detail_copy);
+        Button btnClose = dialogView.findViewById(R.id.btn_detail_close);
+
+        String appName = item.getAppName().isEmpty() ? item.getPackageName() : item.getAppName();
+        tvAppName.setText(appName);
+
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMMM yyyy, HH:mm:ss", new Locale("tr", "TR"));
+        tvTime.setText(sdf.format(new java.util.Date(item.getTimestamp())));
+        tvPackage.setText(item.getPackageName());
+
+        tvTitle.setText(item.getTitle().isEmpty() ? "(Başlık Yok)" : item.getTitle());
+
+        if (item.getSubText() != null && !item.getSubText().isEmpty()) {
+            tvSubtext.setText(item.getSubText());
+            tvSubtext.setVisibility(View.VISIBLE);
+        } else {
+            tvSubtext.setVisibility(View.GONE);
+        }
+
+        String fullText = item.getText().isEmpty() ? item.getSubText() : item.getText();
+        if (fullText.isEmpty()) {
+            fullText = "(İçerik boş)";
+        }
+        tvBody.setText(fullText);
+
+        try {
+            android.graphics.drawable.Drawable icon = getPackageManager().getApplicationIcon(item.getPackageName());
+            ivIcon.setImageDrawable(icon);
+        } catch (Exception ignored) {
+            ivIcon.setImageResource(R.mipmap.ic_launcher);
+        }
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        }
+
+        btnCopy.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null) {
+                    String toCopy = (item.getTitle().isEmpty() ? "" : item.getTitle() + "\n\n") +
+                                   (item.getText().isEmpty() ? item.getSubText() : item.getText());
+                    ClipData clip = ClipData.newPlainText("MacConnect Notification", toCopy.trim());
+                    clipboard.setPrimaryClip(clip);
+                    Toast.makeText(MainActivity.this, "Bildirim içeriği panoya kopyalandı.", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        btnClose.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+
+        dialog.show();
     }
 
     private void refreshNotificationHistory() {
@@ -763,6 +859,41 @@ public class MainActivity extends Activity {
             mTvBtPermStatus.setText("Bluetooth İzni: Gerekli ⚠️");
             mBtnGrantBt.setVisibility(View.VISIBLE);
         }
+
+        boolean callOk = hasCallPermissions();
+        if (mTvCallPermStatus != null) {
+            if (callOk) {
+                mTvCallPermStatus.setText("Arama Yanıtlama: Açık ✅");
+                if (mBtnGrantCall != null) mBtnGrantCall.setVisibility(View.GONE);
+            } else {
+                mTvCallPermStatus.setText("Arama Yanıtlama: Gerekli ⚠️");
+                if (mBtnGrantCall != null) mBtnGrantCall.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+
+    private boolean hasCallPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (checkSelfPermission(Manifest.permission.ANSWER_PHONE_CALLS) != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        if (checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            return false;
+        }
+        return true;
+    }
+
+    private void requestCallPermissions() {
+        List<String> perms = new ArrayList<>();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            perms.add(Manifest.permission.ANSWER_PHONE_CALLS);
+        }
+        perms.add(Manifest.permission.READ_PHONE_STATE);
+        perms.add(Manifest.permission.READ_CALL_LOG);
+        perms.add(Manifest.permission.READ_CONTACTS);
+
+        requestPermissions(perms.toArray(new String[0]), REQ_CALL_PERMS);
     }
 
     private boolean hasBluetoothPermissions() {
@@ -795,10 +926,12 @@ public class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         updatePermissionStatusUI();
         refreshPairedDevices();
-        if (hasBluetoothPermissions()) {
-            BluetoothService svc = BluetoothService.getInstance();
-            if (svc != null) {
+        BluetoothService svc = BluetoothService.getInstance();
+        if (svc != null) {
+            if (requestCode == REQ_BT_PERMS && hasBluetoothPermissions()) {
                 svc.startServerListening();
+            } else if (requestCode == REQ_CALL_PERMS) {
+                svc.refreshTelephonyListener();
             }
         }
     }
