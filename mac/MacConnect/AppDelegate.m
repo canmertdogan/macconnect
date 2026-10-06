@@ -14,6 +14,7 @@
 @property (nonatomic, strong) NSDictionary *activeIncomingCall;
 @property (nonatomic, strong) NSMenuItem *incomingCallMenuItem;
 @property (nonatomic, strong) NSMenuItem *answerCallMenuItem;
+@property (nonatomic, strong) NSMenuItem *answerSpeakerCallMenuItem;
 @property (nonatomic, strong) NSMenuItem *rejectCallMenuItem;
 
 @end
@@ -66,6 +67,11 @@
     [self.answerCallMenuItem setTarget:self];
     [self.answerCallMenuItem setHidden:YES];
     [self.statusMenu addItem:self.answerCallMenuItem];
+
+    self.answerSpeakerCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"   🔊 Hoparlörle Aç (Eller Serbest)" action:@selector(answerSpeakerCallClicked:) keyEquivalent:@""];
+    [self.answerSpeakerCallMenuItem setTarget:self];
+    [self.answerSpeakerCallMenuItem setHidden:YES];
+    [self.statusMenu addItem:self.answerSpeakerCallMenuItem];
 
     self.rejectCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"   ❌ Aramayı Reddet" action:@selector(rejectCallClicked:) keyEquivalent:@""];
     [self.rejectCallMenuItem setTarget:self];
@@ -195,6 +201,13 @@
     [self updateCallMenuState];
 }
 
+- (void)answerSpeakerCallClicked:(id)sender {
+    [[BluetoothBridge sharedBridge] sendCallAction:@"answer_speaker"];
+    [[NotificationPresenter sharedPresenter] dismissIncomingCall];
+    self.activeIncomingCall = nil;
+    [self updateCallMenuState];
+}
+
 - (void)rejectCallClicked:(id)sender {
     [[BluetoothBridge sharedBridge] sendCallAction:@"reject"];
     [[NotificationPresenter sharedPresenter] dismissIncomingCall];
@@ -210,10 +223,12 @@
         self.incomingCallMenuItem.title = [NSString stringWithFormat:@"📞 Gelen Arama: %@ (%@)", name, num];
         self.incomingCallMenuItem.hidden = NO;
         self.answerCallMenuItem.hidden = NO;
+        self.answerSpeakerCallMenuItem.hidden = NO;
         self.rejectCallMenuItem.hidden = NO;
     } else {
         self.incomingCallMenuItem.hidden = YES;
         self.answerCallMenuItem.hidden = YES;
+        self.answerSpeakerCallMenuItem.hidden = YES;
         self.rejectCallMenuItem.hidden = YES;
         if ([BluetoothBridge sharedBridge].state == MacConnectStateConnected) {
             self.statusItem.button.title = @"🟢";

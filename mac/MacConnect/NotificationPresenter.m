@@ -34,12 +34,15 @@
     UNNotificationAction *answerAction = [UNNotificationAction actionWithIdentifier:@"ACTION_ANSWER"
                                                                               title:@"📞 Cevapla"
                                                                             options:UNNotificationActionOptionForeground];
+    UNNotificationAction *speakerAction = [UNNotificationAction actionWithIdentifier:@"ACTION_SPEAKER"
+                                                                               title:@"🔊 Hoparlörle Aç"
+                                                                             options:UNNotificationActionOptionForeground];
     UNNotificationAction *rejectAction = [UNNotificationAction actionWithIdentifier:@"ACTION_REJECT"
                                                                               title:@"❌ Reddet"
                                                                             options:UNNotificationActionOptionDestructive];
 
     UNNotificationCategory *callCategory = [UNNotificationCategory categoryWithIdentifier:@"MC_INCOMING_CALL"
-                                                                                   actions:@[answerAction, rejectAction]
+                                                                                   actions:@[answerAction, speakerAction, rejectAction]
                                                                          intentIdentifiers:@[]
                                                                                    options:UNNotificationCategoryOptionCustomDismissAction];
 
@@ -68,6 +71,9 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     NSString *actionId = response.actionIdentifier;
     if ([@"ACTION_ANSWER" isEqualToString:actionId]) {
         [[BluetoothBridge sharedBridge] sendCallAction:@"answer"];
+        [self dismissIncomingCall];
+    } else if ([@"ACTION_SPEAKER" isEqualToString:actionId]) {
+        [[BluetoothBridge sharedBridge] sendCallAction:@"answer_speaker"];
         [self dismissIncomingCall];
     } else if ([@"ACTION_REJECT" isEqualToString:actionId]) {
         [[BluetoothBridge sharedBridge] sendCallAction:@"reject"];

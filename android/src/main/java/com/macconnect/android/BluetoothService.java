@@ -497,14 +497,47 @@ public class BluetoothService extends Service {
         }
     }
 
+    private void enableSpeakerphone() {
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                    if (am == null) return;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        java.util.List<android.media.AudioDeviceInfo> devices = am.getAvailableCommunicationDevices();
+                        for (android.media.AudioDeviceInfo dev : devices) {
+                            if (dev.getType() == android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
+                                am.setCommunicationDevice(dev);
+                                log("Communication device set to built-in speaker (Android 12+)");
+                                return;
+                            }
+                        }
+                    }
+                    am.setMode(android.media.AudioManager.MODE_IN_CALL);
+                    am.setSpeakerphoneOn(true);
+                    log("Speakerphone enabled via AudioManager.");
+                } catch (Exception e) {
+                    log("Error enabling speakerphone: " + e.getMessage());
+                }
+            }
+        }, 600);
+    }
+
     private void handleCallAction(String action) {
         log("Received call action from Mac: " + action);
-        if ("answer".equalsIgnoreCase(action)) {
+        boolean answerNormal = "answer".equalsIgnoreCase(action);
+        boolean answerSpeaker = "answer_speaker".equalsIgnoreCase(action);
+
+        if (answerNormal || answerSpeaker) {
             // 1. Check if there is an active VoIP call
             if (mActiveVoipAnswerAction != null && mActiveVoipAnswerAction.actionIntent != null) {
                 try {
                     mActiveVoipAnswerAction.actionIntent.send();
                     log("Answered VoIP call via PendingIntent");
+                    if (answerSpeaker) {
+                        enableSpeakerphone();
+                    }
                     return;
                 } catch (Exception e) {
                     log("Error answering VoIP call via PendingIntent: " + e.getMessage());
@@ -519,6 +552,9 @@ public class BluetoothService extends Service {
                         if (checkSelfPermission(Manifest.permission.ANSWER_PHONE_CALLS) == PackageManager.PERMISSION_GRANTED) {
                             telecomManager.acceptRingingCall();
                             log("Accepted ringing call via TelecomManager");
+                            if (answerSpeaker) {
+                                enableSpeakerphone();
+                            }
                             return;
                         } else {
                             log("ANSWER_PHONE_CALLS permission not granted!");
@@ -541,6 +577,9 @@ public class BluetoothService extends Service {
                     audioManager.dispatchMediaKeyEvent(down);
                     audioManager.dispatchMediaKeyEvent(up);
                     log("Dispatched HEADSETHOOK event for answering call");
+                    if (answerSpeaker) {
+                        enableSpeakerphone();
+                    }
                 }
             } catch (Exception e) {
                 log("Fallback headset hook failed: " + e.getMessage());
