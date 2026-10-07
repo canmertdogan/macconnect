@@ -124,6 +124,16 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
 
 @end
 
+// Passive label that never intercepts mouse clicks
+@interface MCHitThroughLabel : NSTextField
+@end
+
+@implementation MCHitThroughLabel
+- (NSView *)hitTest:(NSPoint)point {
+    return nil;
+}
+@end
+
 // Custom Circular & Pill Liquid Glass Buttons
 @interface MCGlassButton : NSButton
 @property (nonatomic, copy) NSString *customIdentifier;
@@ -135,18 +145,39 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
 - (BOOL)isFlipped { return YES; }
 
 - (NSView *)hitTest:(NSPoint)point {
-    if (NSPointInRect(point, self.bounds)) {
+    // In AppKit, point is in superview's coordinate space
+    NSPoint local = [self convertPoint:point fromView:self.superview];
+    if (NSPointInRect(local, self.bounds) && !self.isHidden && self.isEnabled) {
         return self;
     }
     return nil;
 }
 
 - (void)mouseDown:(NSEvent *)event {
-    self.layer.opacity = 0.65;
-    [super mouseDown:event];
+    self.layer.opacity = 0.50;
+    BOOL keepOn = YES;
+    BOOL isInside = YES;
+    while (keepOn) {
+        NSEvent *nextEvent = [self.window nextEventMatchingMask:(NSEventMaskLeftMouseUp | NSEventMaskLeftMouseDragged)];
+        if (!nextEvent) break;
+        NSPoint mouseLoc = [self convertPoint:nextEvent.locationInWindow fromView:nil];
+        isInside = NSPointInRect(mouseLoc, self.bounds);
+        self.layer.opacity = isInside ? 0.50 : 1.0;
+        if (nextEvent.type == NSEventTypeLeftMouseUp) {
+            keepOn = NO;
+        }
+    }
     self.layer.opacity = 1.0;
-    if (self.onClickBlock) {
-        self.onClickBlock();
+    if (isInside) {
+        if (self.target && self.action && [self.target respondsToSelector:self.action]) {
+            #pragma clang diagnostic push
+            #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+            [self.target performSelector:self.action withObject:self];
+            #pragma clang diagnostic pop
+        }
+        if (self.onClickBlock) {
+            self.onClickBlock();
+        }
     }
 }
 
@@ -166,7 +197,7 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     btn.action = action;
     btn.customIdentifier = digit;
 
-    NSTextField *digitLbl = [[NSTextField alloc] initWithFrame:NSMakeRect(0, subtext.length > 0 ? 8 : 16, 62, 28)];
+    MCHitThroughLabel *digitLbl = [[MCHitThroughLabel alloc] initWithFrame:NSMakeRect(0, subtext.length > 0 ? 8 : 16, 62, 28)];
     digitLbl.stringValue = digit;
     digitLbl.font = [NSFont systemFontOfSize:23 weight:NSFontWeightLight];
     digitLbl.textColor = [NSColor whiteColor];
@@ -178,7 +209,7 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     [btn addSubview:digitLbl];
 
     if (subtext.length > 0) {
-        NSTextField *subLbl = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 36, 62, 14)];
+        MCHitThroughLabel *subLbl = [[MCHitThroughLabel alloc] initWithFrame:NSMakeRect(0, 36, 62, 14)];
         subLbl.stringValue = subtext;
         subLbl.font = [NSFont systemFontOfSize:8.5 weight:NSFontWeightBold];
         subLbl.textColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.60];
@@ -211,15 +242,14 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     btn.target = target;
     btn.action = action;
 
-    NSTextField *iconLbl = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 15, 62, 32)];
-    iconLbl.stringValue = @"📞";
-    iconLbl.font = [NSFont systemFontOfSize:24];
-    iconLbl.alignment = NSTextAlignmentCenter;
-    iconLbl.editable = NO;
-    iconLbl.selectable = NO;
-    iconLbl.bordered = NO;
-    iconLbl.backgroundColor = [NSColor clearColor];
-    [btn addSubview:iconLbl];
+    NSImageView *callIcon = [[NSImageView alloc] initWithFrame:NSMakeRect(18, 18, 26, 26)];
+    callIcon.imageScaling = NSImageScaleProportionallyUpOrDown;
+    if (@available(macOS 11.0, *)) {
+        NSImageSymbolConfiguration *cfg = [NSImageSymbolConfiguration configurationWithPointSize:22 weight:NSFontWeightBold];
+        callIcon.image = [[NSImage imageWithSystemSymbolName:@"phone.fill" accessibilityDescription:nil] imageWithSymbolConfiguration:cfg];
+        callIcon.contentTintColor = [NSColor whiteColor];
+    }
+    [btn addSubview:callIcon];
 
     return btn;
 }
@@ -678,6 +708,10 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     self.dialerNumberField.textColor = [NSColor whiteColor];
     self.dialerNumberField.backgroundColor = [NSColor clearColor];
     self.dialerNumberField.bordered = NO;
+    self.dialerNumberField.editable = YES;
+    self.dialerNumberField.selectable = YES;
+    self.dialerNumberField.target = self;
+    self.dialerNumberField.action = @selector(dialerCallClicked:);
     self.dialerNumberField.focusRingType = NSFocusRingTypeNone;
     [dialerCard addSubview:self.dialerNumberField];
 
@@ -1083,10 +1117,15 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     [self dismissIncomingCall];
 }
 
-- (void)dialerDigitClicked:(MCGlassButton *)sender {
-    NSString *digit = sender.customIdentifier ?: @"";
+- (void)appendDigitToDialer:(NSString *)digit {
+    if (!digit || digit.length == 0) return;
     NSString *curr = self.dialerNumberField.stringValue ?: @"";
     self.dialerNumberField.stringValue = [curr stringByAppendingString:digit];
+}
+
+- (void)dialerDigitClicked:(MCGlassButton *)sender {
+    NSString *digit = sender.customIdentifier ?: @"";
+    [self appendDigitToDialer:digit];
 }
 
 - (void)dialerBackspaceClicked:(id)sender {
@@ -1106,7 +1145,18 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
         return;
     }
 
-    [[BluetoothBridge sharedBridge] dialPhoneNumber:number];
+    BluetoothBridge *bridge = [BluetoothBridge sharedBridge];
+    if (bridge.state != MacConnectStateConnected) {
+        NSAlert *alert = [[NSAlert alloc] init];
+        alert.alertStyle = NSAlertStyleWarning;
+        alert.messageText = @"Telefon Bağlı Değil";
+        alert.informativeText = @"Arama yapabilmek için telefonunuzun Bluetooth ile bağlı olması gerekir. Lütfen sol menüdeki 'Telefona Bağlan' butonuna tıklayarak telefonunuza bağlanın.";
+        [alert runModal];
+        return;
+    }
+
+    [bridge dialPhoneNumber:number];
+    NSLog(@"[Dialer] Sent dial command to phone: %@", number);
 
     NSDictionary *entry = @{
         @"name": number,
@@ -1124,7 +1174,7 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
         self.callHeroAvatarImageView.contentTintColor = [NSColor colorWithCalibratedRed:0.25 green:0.90 blue:0.45 alpha:1.0];
     }
     self.callHeroTitleLabel.stringValue = [NSString stringWithFormat:@"Aranıyor: %@", number];
-    self.callHeroSubtitleLabel.stringValue = @"Arama komutu telefona iletildi.";
+    self.callHeroSubtitleLabel.stringValue = @"Arama komutu telefona iletildi. Telefonunuz aramayı başlatıyor...";
     self.callHeroButtonStack.hidden = NO;
     self.btnAnswerCall.hidden = YES;
     self.btnAnswerSpeakerCall.hidden = YES;

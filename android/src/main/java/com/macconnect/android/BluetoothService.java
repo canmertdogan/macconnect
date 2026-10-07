@@ -592,6 +592,14 @@ public class BluetoothService extends Service {
                     callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(callIntent);
                     log("Arama başlatıldı: " + number);
+
+                    try {
+                        JSONObject statusObj = new JSONObject();
+                        statusObj.put("type", "call_status");
+                        statusObj.put("status", "dialing");
+                        statusObj.put("message", "Telefonda arama başlatıldı: " + number);
+                        sendJson(statusObj);
+                    } catch (Exception ignored) {}
                 } catch (Exception e) {
                     log("Arama başlatılamadı (" + number + "): " + e.getMessage());
                 }
