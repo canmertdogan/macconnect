@@ -82,6 +82,60 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     completionHandler();
 }
 
+static NSString *MCResolvePrettyAppName(NSString *rawAppName, NSString *packageName) {
+    if (rawAppName && rawAppName.length > 0 && ![rawAppName containsString:@"."] && ![rawAppName isEqualToString:packageName]) {
+        return rawAppName;
+    }
+    NSString *pkg = (packageName && packageName.length > 0) ? packageName : rawAppName;
+    if (!pkg || pkg.length == 0) return @"Uygulama";
+
+    NSDictionary *known = @{
+        @"com.google.android.calendar": @"Google Takvim",
+        @"com.google.android.gm": @"Gmail",
+        @"com.google.android.apps.messaging": @"Mesajlar",
+        @"com.google.android.youtube": @"YouTube",
+        @"com.google.android.apps.photos": @"Google Fotoğraflar",
+        @"com.google.android.apps.maps": @"Google Haritalar",
+        @"com.google.android.deskclock": @"Saat",
+        @"com.google.android.keep": @"Google Keep",
+        @"com.whatsapp": @"WhatsApp",
+        @"org.telegram.messenger": @"Telegram",
+        @"com.instagram.android": @"Instagram",
+        @"com.twitter.android": @"X",
+        @"com.x.android": @"X",
+        @"com.spotify.music": @"Spotify",
+        @"com.facebook.katana": @"Facebook",
+        @"com.facebook.orca": @"Messenger",
+        @"com.slack": @"Slack",
+        @"com.discord": @"Discord",
+        @"com.microsoft.teams": @"Microsoft Teams",
+        @"com.microsoft.office.outlook": @"Outlook",
+        @"com.netflix.mediaclient": @"Netflix",
+        @"com.android.phone": @"Telefon",
+        @"com.google.android.dialer": @"Telefon",
+        @"com.samsung.android.incallui": @"Telefon",
+        @"com.apple.android.music": @"Apple Music",
+        @"deezer.android.app": @"Deezer"
+    };
+
+    if (known[pkg]) {
+        return known[pkg];
+    }
+
+    NSArray *parts = [pkg componentsSeparatedByString:@"."];
+    if (parts.count >= 2) {
+        NSString *last = [parts lastObject];
+        if ([last localizedCaseInsensitiveCompare:@"android"] == NSOrderedSame ||
+            [last localizedCaseInsensitiveCompare:@"app"] == NSOrderedSame) {
+            last = parts[parts.count - 2];
+        }
+        if (last.length > 0) {
+            return [last capitalizedString];
+        }
+    }
+    return pkg;
+}
+
 #pragma mark - Presentation
 
 - (void)presentNotificationWithAppName:(NSString *)appName
@@ -100,7 +154,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
                            packageName:(NSString *)packageName
                                  sound:(BOOL)playSound {
     dispatch_async(dispatch_get_main_queue(), ^{
-        NSString *displayTitle = (appName && appName.length > 0) ? appName : @"Phone";
+        NSString *displayTitle = MCResolvePrettyAppName(appName, packageName);
         
         NSString *displaySubtitle = @"";
         if (title && title.length > 0) {
