@@ -1,5 +1,6 @@
 #import "AppDelegate.h"
 #import "NotificationPresenter.h"
+#import "MainWindowController.h"
 
 @interface AppDelegate ()
 
@@ -24,6 +25,9 @@
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
     _recentNotifications = [[NSMutableArray alloc] init];
 
+    // Configure regular activation policy so app lives in Dock and has window focus
+    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+
     // Configure status bar item
     self.statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength];
     self.statusItem.button.title = @"🔴";
@@ -34,10 +38,18 @@
     // Initialize Notification Presenter and request system notification permissions
     [NotificationPresenter sharedPresenter];
 
+    // Initialize & Show Main Application Window with Navigation Bar
+    [[MainWindowController sharedController] showWindowAndActivate];
+
     // Initialize Bluetooth Bridge
     BluetoothBridge *bridge = [BluetoothBridge sharedBridge];
     bridge.delegate = self;
     [bridge start];
+}
+
+- (BOOL)applicationShouldHandleReopen:(NSApplication *)sender hasVisibleWindows:(BOOL)flag {
+    [[MainWindowController sharedController] showWindowAndActivate];
+    return YES;
 }
 
 - (void)buildMenu {
@@ -47,6 +59,13 @@
     NSMenuItem *headerItem = [[NSMenuItem alloc] initWithTitle:@"MacConnect" action:nil keyEquivalent:@""];
     [headerItem setEnabled:NO];
     [self.statusMenu addItem:headerItem];
+
+    // Open Main Window Item
+    NSMenuItem *openWindowItem = [[NSMenuItem alloc] initWithTitle:@"MacConnect'i Aç (Pencere)" action:@selector(openMainWindowClicked:) keyEquivalent:@"m"];
+    [openWindowItem setTarget:self];
+    [self.statusMenu addItem:openWindowItem];
+
+    [self.statusMenu addItem:[NSMenuItem separatorItem]];
 
     // Connection Status
     self.statusMenuItem = [[NSMenuItem alloc] initWithTitle:@"🔴 Disconnected (Waiting...)" action:nil keyEquivalent:@""];
@@ -63,7 +82,7 @@
     [self.incomingCallMenuItem setHidden:YES];
     [self.statusMenu addItem:self.incomingCallMenuItem];
 
-    self.answerCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"   ▶️ Aramayı Cevapla" action:@selector(answerCallClicked:) keyEquivalent:@""];
+    self.answerCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"   📞 Aramayı Cevapla" action:@selector(answerCallClicked:) keyEquivalent:@""];
     [self.answerCallMenuItem setTarget:self];
     [self.answerCallMenuItem setHidden:YES];
     [self.statusMenu addItem:self.answerCallMenuItem];
@@ -121,6 +140,10 @@
     self.statusItem.menu = self.statusMenu;
 }
 
+- (void)openMainWindowClicked:(id)sender {
+    [[MainWindowController sharedController] showWindowAndActivate];
+}
+
 - (void)updateRecentSubmenu {
     NSMenu *recentSubmenu = [[NSMenu alloc] init];
     if (self.recentNotifications.count == 0) {
@@ -171,9 +194,9 @@
 
 - (void)sendTestNotificationClicked:(id)sender {
     [[NotificationPresenter sharedPresenter] presentNotificationWithAppName:@"WhatsApp"
-                                                                      title:@"John Doe (Phone)"
-                                                                       body:@"Hey! MacConnect notification test is working like iPhone Mirroring!"
-                                                                    subText:@"Direct Bluetooth"
+                                                                      title:@"Test Kullanıcısı"
+                                                                       body:@"MacConnect bildirim testi başarıyla çalışıyor!"
+                                                                    subText:@"Doğrudan Bluetooth"
                                                                       sound:YES];
 }
 
@@ -197,6 +220,7 @@
 - (void)answerCallClicked:(id)sender {
     [[BluetoothBridge sharedBridge] sendCallAction:@"answer"];
     [[NotificationPresenter sharedPresenter] dismissIncomingCall];
+    [[MainWindowController sharedController] dismissIncomingCall];
     self.activeIncomingCall = nil;
     [self updateCallMenuState];
 }
@@ -204,6 +228,7 @@
 - (void)answerSpeakerCallClicked:(id)sender {
     [[BluetoothBridge sharedBridge] sendCallAction:@"answer_speaker"];
     [[NotificationPresenter sharedPresenter] dismissIncomingCall];
+    [[MainWindowController sharedController] dismissIncomingCall];
     self.activeIncomingCall = nil;
     [self updateCallMenuState];
 }
@@ -211,6 +236,7 @@
 - (void)rejectCallClicked:(id)sender {
     [[BluetoothBridge sharedBridge] sendCallAction:@"reject"];
     [[NotificationPresenter sharedPresenter] dismissIncomingCall];
+    [[MainWindowController sharedController] dismissIncomingCall];
     self.activeIncomingCall = nil;
     [self updateCallMenuState];
 }
@@ -248,6 +274,8 @@
 #pragma mark - BluetoothBridgeDelegate
 
 - (void)bridge:(BluetoothBridge *)bridge didChangeState:(MacConnectState)state deviceName:(NSString *)deviceName {
+    [[MainWindowController sharedController] updateDeviceState:state name:deviceName];
+
     if (state == MacConnectStateConnected) {
         if (!self.activeIncomingCall) {
             self.statusItem.button.title = @"🟢";
@@ -278,6 +306,20 @@
     NSString *icon = notification[@"icon"];
     NSString *pkg = notification[@"package_name"];
 
+    // Update notification feed in Main Window
+    [[MainWindowController sharedController] addNotification:notification];
+
+    // Media Filter: prevent Spotify, Deezer, etc. from spamming notification banners
+    BOOL isMedia = [notification[@"is_media"] boolValue];
+    if (pkg && (
+        [pkg localizedCaseInsensitiveContainsString:@"spotify"] ||
+        [pkg localizedCaseInsensitiveContainsString:@"deezer"] ||
+        [pkg localizedCaseInsensitiveContainsString:@"music"] ||
+        isMedia)) {
+        // Suppress system banner
+        return;
+    }
+
     // Deliver native macOS notification banner with app icon
     [[NotificationPresenter sharedPresenter] presentNotificationWithAppName:appName
                                                                       title:title
@@ -296,6 +338,7 @@
 }
 
 - (void)bridge:(BluetoothBridge *)bridge didUpdateBattery:(NSInteger)batteryLevel {
+    [[MainWindowController sharedController] updateBatteryLevel:batteryLevel];
     if (batteryLevel >= 0) {
         self.batteryMenuItem.title = [NSString stringWithFormat:@"🔋 Battery: %ld%%", (long)batteryLevel];
         self.batteryMenuItem.hidden = NO;
@@ -316,6 +359,8 @@
 }
 
 - (void)bridge:(BluetoothBridge *)bridge didReceiveClipboardText:(NSString *)text {
+    [[MainWindowController sharedController] updateClipboardText:text];
+
     NSString *preview = text.length > 80 ? [NSString stringWithFormat:@"%@...", [text substringToIndex:80]] : text;
     [[NotificationPresenter sharedPresenter] presentNotificationWithAppName:@"MacConnect"
                                                                       title:@"Metin Panoya Kopyalandı"
@@ -337,6 +382,8 @@
     self.activeIncomingCall = callInfo;
     [self updateCallMenuState];
 
+    [[MainWindowController sharedController] showIncomingCall:callInfo];
+
     NSString *name = callInfo[@"name"];
     NSString *number = callInfo[@"number"];
     NSString *appName = callInfo[@"app_name"];
@@ -349,7 +396,16 @@
 - (void)bridgeDidEndCall:(BluetoothBridge *)bridge {
     self.activeIncomingCall = nil;
     [self updateCallMenuState];
+    [[MainWindowController sharedController] dismissIncomingCall];
     [[NotificationPresenter sharedPresenter] dismissIncomingCall];
+}
+
+- (void)bridge:(BluetoothBridge *)bridge didReceiveMediaPlayback:(NSDictionary *)mediaInfo {
+    [[MainWindowController sharedController] updateMediaPlayback:mediaInfo];
+}
+
+- (void)bridge:(BluetoothBridge *)bridge didUpdateCallStatus:(NSString *)status message:(NSString *)message {
+    [[MainWindowController sharedController] updateCallStatus:status message:message];
 }
 
 @end

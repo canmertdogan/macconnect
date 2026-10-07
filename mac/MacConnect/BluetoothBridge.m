@@ -389,6 +389,22 @@
                 [self.delegate bridgeDidEndCall:self];
             }
         });
+    } else if ([@"call_status" isEqualToString:type]) {
+        NSString *status = json[@"status"];
+        NSString *msg = json[@"message"];
+        [self log:[NSString stringWithFormat:@"Call status update: %@ - %@", status, msg]];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if ([self.delegate respondsToSelector:@selector(bridge:didUpdateCallStatus:message:)]) {
+                [self.delegate bridge:self didUpdateCallStatus:status message:msg];
+            }
+        });
+    } else if ([@"media_playback" isEqualToString:type]) {
+        [self log:[NSString stringWithFormat:@"Media playback: [%@] %@ - %@", json[@"app_name"], json[@"title"], json[@"artist"]]];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if ([self.delegate respondsToSelector:@selector(bridge:didReceiveMediaPlayback:)]) {
+                [self.delegate bridge:self didReceiveMediaPlayback:json];
+            }
+        });
     } else if ([@"file_start" isEqualToString:type]) {
         NSString *fileName = json[@"file_name"];
         if (!fileName || fileName.length == 0) {
@@ -468,17 +484,40 @@
 }
 
 - (void)sendCallAction:(NSString *)action {
+    [self sendCallAction:action withData:nil];
+}
+
+- (void)sendCallAction:(NSString *)action withData:(NSDictionary *)data {
     if (!action || action.length == 0) return;
-    NSDictionary *cmd = @{
-        @"type": @"call_action",
-        @"action": action
-    };
-    NSData *data = [NSJSONSerialization dataWithJSONObject:cmd options:0 error:nil];
-    if (data) {
-        NSMutableData *line = [NSMutableData dataWithData:data];
+    NSMutableDictionary *cmd = [NSMutableDictionary dictionaryWithDictionary:data ?: @{}];
+    cmd[@"type"] = @"call_action";
+    cmd[@"action"] = action;
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:cmd options:0 error:nil];
+    if (jsonData) {
+        NSMutableData *line = [NSMutableData dataWithData:jsonData];
         [line appendBytes:"\n" length:1];
         [self sendData:line];
-        [self log:[NSString stringWithFormat:@"Sent call action: %@", action]];
+        [self log:[NSString stringWithFormat:@"Sent call action: %@ (payload: %@)", action, cmd]];
+    }
+}
+
+- (void)dialPhoneNumber:(NSString *)phoneNumber {
+    if (!phoneNumber || phoneNumber.length == 0) return;
+    [self sendCallAction:@"dial" withData:@{@"number": phoneNumber}];
+}
+
+- (void)sendClipboardText:(NSString *)text {
+    if (!text || text.length == 0) return;
+    NSDictionary *cmd = @{
+        @"type": @"clipboard_text",
+        @"text": text
+    };
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:cmd options:0 error:nil];
+    if (jsonData) {
+        NSMutableData *line = [NSMutableData dataWithData:jsonData];
+        [line appendBytes:"\n" length:1];
+        [self sendData:line];
+        [self log:[NSString stringWithFormat:@"Sent clipboard text to phone (%lu chars)", (unsigned long)text.length]];
     }
 }
 

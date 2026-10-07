@@ -373,10 +373,61 @@ public class BluetoothService extends Service {
                 }
             } else if ("call_action".equals(type)) {
                 String action = json.optString("action");
-                handleCallAction(action);
+                handleCallAction(action, json);
+            } else if ("clipboard_text".equals(type)) {
+                final String text = json.optString("text");
+                if (text != null && !text.isEmpty()) {
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                android.content.ClipboardManager cb = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                                if (cb != null) {
+                                    android.content.ClipData clip = android.content.ClipData.newPlainText("MacConnect", text);
+                                    cb.setPrimaryClip(clip);
+                                    log("Pano Mac tarafından güncellendi: " + (text.length() > 25 ? text.substring(0, 25) + "..." : text));
+                                }
+                            } catch (Exception e) {
+                                log("Pano güncellenemedi: " + e.getMessage());
+                            }
+                        }
+                    });
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error parsing incoming JSON: " + line, e);
+        }
+    }
+
+    private String mLastMediaTitle = "";
+    private String mLastMediaArtist = "";
+
+    public void sendMediaPlayback(String pkg, String appName, String title, String artist, String subText, String iconB64) {
+        if (title == null) title = "";
+        if (artist == null) artist = "";
+
+        if (title.equals(mLastMediaTitle) && artist.equals(mLastMediaArtist)) {
+            return;
+        }
+        mLastMediaTitle = title;
+        mLastMediaArtist = artist;
+
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("type", "media_playback");
+            obj.put("package_name", pkg != null ? pkg : "");
+            obj.put("app_name", appName != null ? appName : "Müzik");
+            obj.put("title", title);
+            obj.put("artist", artist);
+            obj.put("sub_text", subText != null ? subText : "");
+            if (iconB64 != null && !iconB64.isEmpty()) {
+                obj.put("icon", iconB64);
+            }
+            obj.put("timestamp", System.currentTimeMillis());
+            sendJson(obj);
+            log("Medya yayını iletildi: " + appName + " - " + title + " (" + artist + ")");
+        } catch (Exception e) {
+            Log.e(TAG, "Error building media_playback JSON", e);
         }
     }
 
@@ -524,18 +575,50 @@ public class BluetoothService extends Service {
         }, 600);
     }
 
-    private void handleCallAction(String action) {
+    private void handleCallAction(String action, JSONObject extraData) {
         log("Received call action from Mac: " + action);
+
+        // 0. Handle Outgoing Call (Dialing from Mac)
+        if ("dial".equalsIgnoreCase(action)) {
+            String number = (extraData != null) ? extraData.optString("number", "") : "";
+            if (!number.isEmpty()) {
+                try {
+                    Intent callIntent;
+                    if (checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+                        callIntent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(number)));
+                    } else {
+                        callIntent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number)));
+                    }
+                    callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(callIntent);
+                    log("Arama başlatıldı: " + number);
+                } catch (Exception e) {
+                    log("Arama başlatılamadı (" + number + "): " + e.getMessage());
+                }
+            }
+            return;
+        }
+
         boolean answerNormal = "answer".equalsIgnoreCase(action);
         boolean answerSpeaker = "answer_speaker".equalsIgnoreCase(action);
+        boolean answerComputer = "transfer_computer".equalsIgnoreCase(action) || "answer_computer".equalsIgnoreCase(action);
 
-        if (answerNormal || answerSpeaker) {
+        if (answerNormal || answerSpeaker || answerComputer) {
+            if (answerComputer) {
+                try {
+                    JSONObject statusObj = new JSONObject();
+                    statusObj.put("type", "call_status");
+                    statusObj.put("status", "on_computer");
+                    statusObj.put("message", "Arama bilgisayar masası modunda aktif. Eller serbest hoparlör devrede.");
+                    sendJson(statusObj);
+                } catch (Exception ignored) {}
+            }
             // 1. Check if there is an active VoIP call
             if (mActiveVoipAnswerAction != null && mActiveVoipAnswerAction.actionIntent != null) {
                 try {
                     mActiveVoipAnswerAction.actionIntent.send();
                     log("Answered VoIP call via PendingIntent");
-                    if (answerSpeaker) {
+                    if (answerSpeaker || answerComputer) {
                         enableSpeakerphone();
                     }
                     return;
@@ -552,7 +635,7 @@ public class BluetoothService extends Service {
                         if (checkSelfPermission(Manifest.permission.ANSWER_PHONE_CALLS) == PackageManager.PERMISSION_GRANTED) {
                             telecomManager.acceptRingingCall();
                             log("Accepted ringing call via TelecomManager");
-                            if (answerSpeaker) {
+                            if (answerSpeaker || answerComputer) {
                                 enableSpeakerphone();
                             }
                             return;
@@ -577,7 +660,7 @@ public class BluetoothService extends Service {
                     audioManager.dispatchMediaKeyEvent(down);
                     audioManager.dispatchMediaKeyEvent(up);
                     log("Dispatched HEADSETHOOK event for answering call");
-                    if (answerSpeaker) {
+                    if (answerSpeaker || answerComputer) {
                         enableSpeakerphone();
                     }
                 }

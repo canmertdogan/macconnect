@@ -873,6 +873,9 @@ public class MainActivity extends Activity {
     }
 
     private boolean hasCallPermissions() {
+        if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+            return false;
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (checkSelfPermission(Manifest.permission.ANSWER_PHONE_CALLS) != PackageManager.PERMISSION_GRANTED) {
                 return false;
@@ -886,6 +889,7 @@ public class MainActivity extends Activity {
 
     private void requestCallPermissions() {
         List<String> perms = new ArrayList<>();
+        perms.add(Manifest.permission.CALL_PHONE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             perms.add(Manifest.permission.ANSWER_PHONE_CALLS);
         }

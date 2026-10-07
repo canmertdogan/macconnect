@@ -16,6 +16,7 @@ clang -fobjc-arc -O2 \
     -I MacConnect \
     MacConnect/main.m \
     MacConnect/AppDelegate.m \
+    MacConnect/MainWindowController.m \
     MacConnect/BluetoothBridge.m \
     MacConnect/NotificationPresenter.m \
     -o build/MacConnect

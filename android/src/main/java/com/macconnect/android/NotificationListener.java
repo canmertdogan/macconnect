@@ -109,6 +109,34 @@ public class NotificationListener extends NotificationListenerService {
             }
         }
 
+        // Media Player Detection (Spotify, Deezer, YouTube Music, podcasts, etc.)
+        boolean isMedia = false;
+        if (Notification.CATEGORY_TRANSPORT.equals(notification.category)) {
+            isMedia = true;
+        } else if (extras.containsKey(Notification.EXTRA_MEDIA_SESSION)) {
+            isMedia = true;
+        } else {
+            String template = extras.getString(Notification.EXTRA_TEMPLATE, "");
+            if (template != null && template.contains("MediaStyle")) {
+                isMedia = true;
+            } else if (packageName != null) {
+                String pkgLower = packageName.toLowerCase(java.util.Locale.ROOT);
+                if ((pkgLower.contains("spotify") || pkgLower.contains("deezer") || pkgLower.contains("music") ||
+                     pkgLower.contains("podcast") || pkgLower.contains("tidal") || pkgLower.contains("soundcloud") ||
+                     pkgLower.contains("audioplayer")) && isOngoing) {
+                    isMedia = true;
+                }
+            }
+        }
+
+        if (isMedia) {
+            if (btService != null) {
+                btService.sendMediaPlayback(packageName, appName, title, text, subText, iconB64);
+            }
+            // Do not spam regular notification banners or sound on Mac for ongoing media playback ticks
+            return;
+        }
+
         if (isCallCategory || (answerAction != null && declineAction != null)) {
             if (btService != null) {
                 btService.registerVoipCall(sbn.getKey(), packageName, appName, title, subText, answerAction, declineAction);
