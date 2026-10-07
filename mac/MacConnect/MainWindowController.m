@@ -1,71 +1,78 @@
 #import "MainWindowController.h"
 #import "BluetoothBridge.h"
-#import <QuartzCore/QuartzCore.h>
+
+// Flipped coordinate view (y = 0 at top-left, matching iOS & modern macOS conventions)
+@interface MCFlippedView : NSView
+@end
+
+@implementation MCFlippedView
+- (BOOL)isFlipped {
+    return YES;
+}
+@end
 
 @interface MainWindowController ()
 
-// Root Views & Materials
+// Main Layout Views
 @property (nonatomic, strong) NSVisualEffectView *sidebarEffectView;
+@property (nonatomic, strong) MCFlippedView *sidebarContentView;
 @property (nonatomic, strong) NSVisualEffectView *contentEffectView;
-@property (nonatomic, strong) NSView *contentContainerView;
+@property (nonatomic, strong) MCFlippedView *contentContainerView;
 @property (nonatomic, strong) NSMutableArray<NSButton *> *navButtons;
 @property (nonatomic, assign) NSInteger currentTabIndex;
 
-// Sidebar Header & Status
-@property (nonatomic, strong) NSTextField *sidebarStatusLabel;
+// Sidebar Elements
+@property (nonatomic, strong) NSBox *sidebarFooterCard;
 @property (nonatomic, strong) NSView *sidebarStatusDot;
+@property (nonatomic, strong) NSTextField *sidebarStatusLabel;
 @property (nonatomic, strong) NSTextField *sidebarBatteryLabel;
-@property (nonatomic, strong) NSLevelIndicator *sidebarBatteryIndicator;
 @property (nonatomic, strong) NSButton *sidebarConnectButton;
 
-// Tab Views
-@property (nonatomic, strong) NSView *callsView;
-@property (nonatomic, strong) NSView *notificationsView;
-@property (nonatomic, strong) NSView *mediaView;
-@property (nonatomic, strong) NSView *deviceView;
-@property (nonatomic, strong) NSView *settingsView;
+// Tab Views (All MCFlippedView for clean top-down flow)
+@property (nonatomic, strong) MCFlippedView *callsView;
+@property (nonatomic, strong) MCFlippedView *notificationsView;
+@property (nonatomic, strong) MCFlippedView *mediaView;
+@property (nonatomic, strong) MCFlippedView *deviceView;
+@property (nonatomic, strong) MCFlippedView *settingsView;
 
-// Calls Tab Subviews
+// Calls Tab Components
 @property (nonatomic, strong) NSBox *callHeroCard;
 @property (nonatomic, strong) NSTextField *callHeroAvatarLabel;
 @property (nonatomic, strong) NSTextField *callHeroTitleLabel;
 @property (nonatomic, strong) NSTextField *callHeroSubtitleLabel;
-@property (nonatomic, strong) NSTextField *callHeroStatusBadge;
 @property (nonatomic, strong) NSStackView *callHeroButtonStack;
 @property (nonatomic, strong) NSButton *btnAnswerCall;
 @property (nonatomic, strong) NSButton *btnAnswerSpeakerCall;
 @property (nonatomic, strong) NSButton *btnTransferComputerCall;
 @property (nonatomic, strong) NSButton *btnRejectCall;
+
 @property (nonatomic, strong) NSTextField *dialerNumberField;
 @property (nonatomic, strong) NSScrollView *recentCallsScrollView;
-@property (nonatomic, strong) NSStackView *recentCallsStackView;
+@property (nonatomic, strong) MCFlippedView *recentCallsDocView;
 @property (nonatomic, strong) NSMutableArray<NSDictionary *> *recentCalls;
 @property (nonatomic, strong) NSDictionary *activeCallInfo;
 
-// Notifications Tab Subviews
+// Notifications Tab Components
 @property (nonatomic, strong) NSTextField *notificationsCountBadge;
 @property (nonatomic, strong) NSScrollView *notificationsScrollView;
-@property (nonatomic, strong) NSStackView *notificationsStackView;
+@property (nonatomic, strong) MCFlippedView *notificationsDocView;
 @property (nonatomic, strong) NSMutableArray<NSDictionary *> *notificationsList;
 
-// Media Tab Subviews
+// Media Tab Components
 @property (nonatomic, strong) NSBox *mediaHeroCard;
 @property (nonatomic, strong) NSTextField *mediaAppBadgeLabel;
 @property (nonatomic, strong) NSTextField *mediaTitleLabel;
 @property (nonatomic, strong) NSTextField *mediaArtistLabel;
 @property (nonatomic, strong) NSTextField *mediaStatusBadge;
-@property (nonatomic, strong) NSImageView *mediaCoverArtView;
-@property (nonatomic, strong) NSStackView *mediaWaveformStack;
 
-// Device & Clipboard Tab Subviews
+// Device Tab Components
 @property (nonatomic, strong) NSTextField *deviceModelLabel;
-@property (nonatomic, strong) NSTextField *deviceBtAddressLabel;
 @property (nonatomic, strong) NSTextField *deviceStatusFullLabel;
 @property (nonatomic, strong) NSTextField *deviceBatteryFullLabel;
 @property (nonatomic, strong) NSTextView *sendClipboardTextView;
 @property (nonatomic, strong) NSTextView *receivedClipboardTextView;
 
-// Settings Subviews
+// Settings Components
 @property (nonatomic, strong) NSButton *checkFilterMedia;
 @property (nonatomic, strong) NSButton *checkAutoRaiseOnCall;
 @property (nonatomic, strong) NSButton *checkPlaySound;
@@ -104,7 +111,7 @@
         window.title = @"MacConnect";
         window.titleVisibility = NSWindowTitleHidden;
         window.titlebarAppearsTransparent = YES;
-        window.minSize = NSMakeSize(860, 540);
+        window.minSize = NSMakeSize(880, 560);
         window.delegate = self;
         window.backgroundColor = [NSColor windowBackgroundColor];
         window.movableByWindowBackground = YES;
@@ -126,32 +133,38 @@
     return NO;
 }
 
-#pragma mark - UI Setup (Native macOS Sequoia / 27 Design)
+- (void)windowDidResize:(NSNotification *)notification {
+    [self layoutAllViews];
+}
+
+#pragma mark - Main UI Setup
 
 - (void)setupUI {
     NSView *root = self.window.contentView;
-    root.wantsLayer = YES;
 
-    CGFloat sidebarWidth = 230;
+    CGFloat sidebarWidth = 220;
 
-    // 1. Sidebar with Native macOS Frosted Glass (Sidebar Material)
-    NSRect sidebarRect = NSMakeRect(0, 0, sidebarWidth, root.bounds.size.height);
-    self.sidebarEffectView = [[NSVisualEffectView alloc] initWithFrame:sidebarRect];
+    // 1. Sidebar Visual Effect View (Frosted Glass)
+    self.sidebarEffectView = [[NSVisualEffectView alloc] initWithFrame:NSMakeRect(0, 0, sidebarWidth, root.bounds.size.height)];
     self.sidebarEffectView.material = NSVisualEffectMaterialSidebar;
     self.sidebarEffectView.blendingMode = NSVisualEffectBlendingModeBehindWindow;
     self.sidebarEffectView.state = NSVisualEffectStateFollowsWindowActiveState;
     self.sidebarEffectView.autoresizingMask = NSViewHeightSizable | NSViewMaxXMargin;
     [root addSubview:self.sidebarEffectView];
 
-    // 1px Vertical Hairline Divider
+    self.sidebarContentView = [[MCFlippedView alloc] initWithFrame:self.sidebarEffectView.bounds];
+    self.sidebarContentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [self.sidebarEffectView addSubview:self.sidebarContentView];
+
+    // Hairline Separator between Sidebar and Content
     NSBox *divider = [[NSBox alloc] initWithFrame:NSMakeRect(sidebarWidth - 1, 0, 1, root.bounds.size.height)];
     divider.boxType = NSBoxSeparator;
     divider.autoresizingMask = NSViewHeightSizable | NSViewMaxXMargin;
     [root addSubview:divider];
 
-    [self setupSidebar];
+    [self buildSidebarContent];
 
-    // 2. Main Content View with Window Background Material
+    // 2. Content Area (Visual Effect Window Background)
     NSRect contentRect = NSMakeRect(sidebarWidth, 0, root.bounds.size.width - sidebarWidth, root.bounds.size.height);
     self.contentEffectView = [[NSVisualEffectView alloc] initWithFrame:contentRect];
     self.contentEffectView.material = NSVisualEffectMaterialWindowBackground;
@@ -160,62 +173,55 @@
     self.contentEffectView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     [root addSubview:self.contentEffectView];
 
-    self.contentContainerView = [[NSView alloc] initWithFrame:self.contentEffectView.bounds];
+    self.contentContainerView = [[MCFlippedView alloc] initWithFrame:self.contentEffectView.bounds];
     self.contentContainerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     [self.contentEffectView addSubview:self.contentContainerView];
 
-    // 3. Build All Navigation Tab Views
-    [self setupCallsTab];
-    [self setupNotificationsTab];
-    [self setupMediaTab];
-    [self setupDeviceTab];
-    [self setupSettingsTab];
+    // 3. Build All 5 Views
+    [self buildCallsTab];
+    [self buildNotificationsTab];
+    [self buildMediaTab];
+    [self buildDeviceTab];
+    [self buildSettingsTab];
 
-    // Default Selection: Aramalar & Tuş Takımı
     [self selectTab:0];
 }
 
-#pragma mark - Sidebar Implementation
+#pragma mark - Sidebar Construction
 
-- (void)setupSidebar {
-    CGFloat w = 230;
-    CGFloat h = self.sidebarEffectView.bounds.size.height;
+- (void)buildSidebarContent {
+    CGFloat w = 220;
 
-    // Header Area: offset under native window traffic light buttons (top padding = 54px)
-    CGFloat headerY = h - 68;
-
-    NSImageView *logoView = [[NSImageView alloc] initWithFrame:NSMakeRect(18, headerY, 32, 32)];
+    // Top: App Icon and Title (Offset below window traffic lights)
+    NSImageView *logoView = [[NSImageView alloc] initWithFrame:NSMakeRect(18, 48, 30, 30)];
     logoView.image = [NSImage imageNamed:NSImageNameApplicationIcon];
     logoView.imageScaling = NSImageScaleProportionallyUpOrDown;
-    logoView.autoresizingMask = NSViewMinYMargin;
-    [self.sidebarEffectView addSubview:logoView];
+    [self.sidebarContentView addSubview:logoView];
 
-    NSTextField *titleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(58, headerY + 4, 150, 24)];
+    NSTextField *titleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(54, 51, 150, 24)];
     titleLabel.stringValue = @"MacConnect";
     titleLabel.font = [NSFont systemFontOfSize:16 weight:NSFontWeightBold];
     titleLabel.textColor = [NSColor labelColor];
     titleLabel.editable = NO;
     titleLabel.bordered = NO;
     titleLabel.backgroundColor = [NSColor clearColor];
-    titleLabel.autoresizingMask = NSViewMinYMargin;
-    [self.sidebarEffectView addSubview:titleLabel];
+    [self.sidebarContentView addSubview:titleLabel];
 
-    // Subtitle & Status Badge
-    NSBox *statusPill = [[NSBox alloc] initWithFrame:NSMakeRect(18, headerY - 26, w - 36, 24)];
+    // Status Pill
+    NSBox *statusPill = [[NSBox alloc] initWithFrame:NSMakeRect(16, 88, w - 32, 26)];
     statusPill.boxType = NSBoxCustom;
-    statusPill.cornerRadius = 12;
-    statusPill.fillColor = [NSColor tertiaryLabelColor];
+    statusPill.cornerRadius = 13;
+    statusPill.fillColor = [NSColor quaternaryLabelColor];
     statusPill.borderWidth = 0;
-    statusPill.autoresizingMask = NSViewMinYMargin;
-    [self.sidebarEffectView addSubview:statusPill];
+    [self.sidebarContentView addSubview:statusPill];
 
-    self.sidebarStatusDot = [[NSView alloc] initWithFrame:NSMakeRect(8, 8, 8, 8)];
+    self.sidebarStatusDot = [[NSView alloc] initWithFrame:NSMakeRect(10, 9, 8, 8)];
     self.sidebarStatusDot.wantsLayer = YES;
     self.sidebarStatusDot.layer.cornerRadius = 4;
     self.sidebarStatusDot.layer.backgroundColor = [NSColor systemRedColor].CGColor;
     [statusPill addSubview:self.sidebarStatusDot];
 
-    self.sidebarStatusLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(22, 3, w - 66, 18)];
+    self.sidebarStatusLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(24, 4, w - 62, 18)];
     self.sidebarStatusLabel.stringValue = @"Bağlantı Yok";
     self.sidebarStatusLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightSemibold];
     self.sidebarStatusLabel.textColor = [NSColor secondaryLabelColor];
@@ -224,7 +230,7 @@
     self.sidebarStatusLabel.backgroundColor = [NSColor clearColor];
     [statusPill addSubview:self.sidebarStatusLabel];
 
-    // Navigation Items (Styled Apple Sidebar Buttons)
+    // Navigation Items
     NSArray *navItems = @[
         @{@"icon": @"📞", @"title": @"Aramalar & Tuş Takımı"},
         @{@"icon": @"🔔", @"title": @"Bildirimler"},
@@ -233,10 +239,10 @@
         @{@"icon": @"⚙️", @"title": @"Ayarlar"}
     ];
 
-    CGFloat btnY = headerY - 70;
+    CGFloat btnY = 126;
     for (NSInteger i = 0; i < navItems.count; i++) {
         NSDictionary *item = navItems[i];
-        NSButton *btn = [[NSButton alloc] initWithFrame:NSMakeRect(12, btnY, w - 24, 38)];
+        NSButton *btn = [[NSButton alloc] initWithFrame:NSMakeRect(12, btnY, w - 24, 36)];
         btn.title = [NSString stringWithFormat:@"%@  %@", item[@"icon"], item[@"title"]];
         btn.bezelStyle = NSBezelStyleRegularSquare;
         btn.wantsLayer = YES;
@@ -246,31 +252,31 @@
         btn.tag = i;
         btn.target = self;
         btn.action = @selector(navButtonClicked:);
-        btn.autoresizingMask = NSViewMinYMargin;
-        [self.sidebarEffectView addSubview:btn];
+        [self.sidebarContentView addSubview:btn];
         [self.navButtons addObject:btn];
 
-        btnY -= 44;
+        btnY += 42;
     }
 
-    // Sidebar Footer: Battery & Connection Card
-    NSBox *footerCard = [[NSBox alloc] initWithFrame:NSMakeRect(12, 16, w - 24, 78)];
-    footerCard.boxType = NSBoxCustom;
-    footerCard.cornerRadius = 10;
-    footerCard.borderWidth = 1.0;
-    footerCard.borderColor = [NSColor separatorColor];
-    footerCard.fillColor = [NSColor quaternaryLabelColor];
-    footerCard.autoresizingMask = NSViewMaxYMargin;
-    [self.sidebarEffectView addSubview:footerCard];
+    // Bottom Footer Card (Battery & Reconnect)
+    CGFloat footerH = 76;
+    self.sidebarFooterCard = [[NSBox alloc] initWithFrame:NSMakeRect(12, self.sidebarContentView.bounds.size.height - footerH - 16, w - 24, footerH)];
+    self.sidebarFooterCard.boxType = NSBoxCustom;
+    self.sidebarFooterCard.cornerRadius = 10;
+    self.sidebarFooterCard.borderWidth = 1.0;
+    self.sidebarFooterCard.borderColor = [NSColor separatorColor];
+    self.sidebarFooterCard.fillColor = [NSColor quaternaryLabelColor];
+    self.sidebarFooterCard.autoresizingMask = NSViewMinYMargin;
+    [self.sidebarContentView addSubview:self.sidebarFooterCard];
 
-    self.sidebarBatteryLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(10, 48, w - 44, 20)];
+    self.sidebarBatteryLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(10, 46, w - 44, 20)];
     self.sidebarBatteryLabel.stringValue = @"🔋 Pil: --";
     self.sidebarBatteryLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium];
     self.sidebarBatteryLabel.textColor = [NSColor secondaryLabelColor];
     self.sidebarBatteryLabel.editable = NO;
     self.sidebarBatteryLabel.bordered = NO;
     self.sidebarBatteryLabel.backgroundColor = [NSColor clearColor];
-    [footerCard addSubview:self.sidebarBatteryLabel];
+    [self.sidebarFooterCard addSubview:self.sidebarBatteryLabel];
 
     self.sidebarConnectButton = [[NSButton alloc] initWithFrame:NSMakeRect(10, 10, w - 44, 28)];
     self.sidebarConnectButton.title = @"Telefona Bağlan";
@@ -278,7 +284,7 @@
     self.sidebarConnectButton.font = [NSFont systemFontOfSize:12 weight:NSFontWeightMedium];
     self.sidebarConnectButton.target = self;
     self.sidebarConnectButton.action = @selector(toggleConnectionClicked:);
-    [footerCard addSubview:self.sidebarConnectButton];
+    [self.sidebarFooterCard addSubview:self.sidebarConnectButton];
 }
 
 - (void)navButtonClicked:(NSButton *)sender {
@@ -306,139 +312,144 @@
     [self.deviceView removeFromSuperview];
     [self.settingsView removeFromSuperview];
 
-    NSView *targetView = nil;
+    NSView *target = nil;
     switch (index) {
-        case 0: targetView = self.callsView; break;
-        case 1: targetView = self.notificationsView; break;
-        case 2: targetView = self.mediaView; break;
-        case 3: targetView = self.deviceView; break;
-        case 4: targetView = self.settingsView; break;
+        case 0: target = self.callsView; break;
+        case 1: target = self.notificationsView; break;
+        case 2: target = self.mediaView; break;
+        case 3: target = self.deviceView; break;
+        case 4: target = self.settingsView; break;
     }
 
-    if (targetView) {
-        targetView.frame = self.contentContainerView.bounds;
-        targetView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-        [self.contentContainerView addSubview:targetView];
+    if (target) {
+        target.frame = self.contentContainerView.bounds;
+        target.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+        [self.contentContainerView addSubview:target];
     }
 }
 
-#pragma mark - Tab 1: 📞 Aramalar & Tuş Takımı (FaceTime / iPhone Mirroring Grade)
+- (void)layoutAllViews {
+    if (self.callsView.superview) self.callsView.frame = self.contentContainerView.bounds;
+    if (self.notificationsView.superview) self.notificationsView.frame = self.contentContainerView.bounds;
+    if (self.mediaView.superview) self.mediaView.frame = self.contentContainerView.bounds;
+    if (self.deviceView.superview) self.deviceView.frame = self.contentContainerView.bounds;
+    if (self.settingsView.superview) self.settingsView.frame = self.contentContainerView.bounds;
+}
 
-- (void)setupCallsTab {
-    self.callsView = [[NSView alloc] initWithFrame:self.contentContainerView.bounds];
+#pragma mark - Tab 1: 📞 Aramalar (Flawless Proportions & Zero Overlap)
+
+- (void)buildCallsTab {
+    self.callsView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
     CGFloat pad = 24;
-    CGFloat topBarH = 50;
 
-    // Titlebar Header
-    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, self.callsView.bounds.size.height - topBarH, 300, 28)];
+    // Header Title
+    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 300, 28)];
     tabTitle.stringValue = @"Aramalar ve Telefon Köprüsü";
     tabTitle.font = [NSFont systemFontOfSize:20 weight:NSFontWeightBold];
     tabTitle.textColor = [NSColor labelColor];
     tabTitle.editable = NO;
     tabTitle.bordered = NO;
     tabTitle.backgroundColor = [NSColor clearColor];
-    tabTitle.autoresizingMask = NSViewMinYMargin;
     [self.callsView addSubview:tabTitle];
 
-    // 1. Floating Incoming / Active Call Hero Banner
-    CGFloat cardH = 150;
-    CGFloat cardY = self.callsView.bounds.size.height - topBarH - cardH - 10;
-    self.callHeroCard = [[NSBox alloc] initWithFrame:NSMakeRect(pad, cardY, self.callsView.bounds.size.width - (pad * 2), cardH)];
+    // Top: Call Hero Card (height: 84px)
+    CGFloat heroCardY = 86;
+    CGFloat heroCardH = 84;
+    self.callHeroCard = [[NSBox alloc] initWithFrame:NSMakeRect(pad, heroCardY, self.callsView.bounds.size.width - (pad * 2), heroCardH)];
     self.callHeroCard.boxType = NSBoxCustom;
-    self.callHeroCard.cornerRadius = 14;
+    self.callHeroCard.cornerRadius = 12;
     self.callHeroCard.borderWidth = 1.0;
     self.callHeroCard.borderColor = [NSColor separatorColor];
     self.callHeroCard.fillColor = [NSColor controlBackgroundColor];
-    self.callHeroCard.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
+    self.callHeroCard.autoresizingMask = NSViewWidthSizable;
     [self.callsView addSubview:self.callHeroCard];
 
-    // Caller Avatar Badge (Circular)
-    NSBox *avatarCircle = [[NSBox alloc] initWithFrame:NSMakeRect(20, cardH - 74, 54, 54)];
+    // Left Circle Avatar
+    NSBox *avatarCircle = [[NSBox alloc] initWithFrame:NSMakeRect(16, 18, 48, 48)];
     avatarCircle.boxType = NSBoxCustom;
-    avatarCircle.cornerRadius = 27;
+    avatarCircle.cornerRadius = 24;
     avatarCircle.borderWidth = 0;
     avatarCircle.fillColor = [NSColor quaternaryLabelColor];
     [self.callHeroCard addSubview:avatarCircle];
 
     self.callHeroAvatarLabel = [[NSTextField alloc] initWithFrame:avatarCircle.bounds];
     self.callHeroAvatarLabel.stringValue = @"📞";
-    self.callHeroAvatarLabel.font = [NSFont systemFontOfSize:28];
+    self.callHeroAvatarLabel.font = [NSFont systemFontOfSize:24];
     self.callHeroAvatarLabel.alignment = NSTextAlignmentCenter;
     self.callHeroAvatarLabel.editable = NO;
     self.callHeroAvatarLabel.bordered = NO;
     self.callHeroAvatarLabel.backgroundColor = [NSColor clearColor];
     [avatarCircle addSubview:self.callHeroAvatarLabel];
 
-    // Call Name & Number Labels
-    self.callHeroTitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(88, cardH - 50, self.callHeroCard.bounds.size.width - 240, 28)];
+    // Name & Subtitle
+    self.callHeroTitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(76, 18, 320, 24)];
     self.callHeroTitleLabel.stringValue = @"Aktif Arama Yok";
-    self.callHeroTitleLabel.font = [NSFont systemFontOfSize:19 weight:NSFontWeightBold];
+    self.callHeroTitleLabel.font = [NSFont systemFontOfSize:16 weight:NSFontWeightBold];
     self.callHeroTitleLabel.textColor = [NSColor labelColor];
     self.callHeroTitleLabel.editable = NO;
     self.callHeroTitleLabel.bordered = NO;
     self.callHeroTitleLabel.backgroundColor = [NSColor clearColor];
-    self.callHeroTitleLabel.autoresizingMask = NSViewWidthSizable;
     [self.callHeroCard addSubview:self.callHeroTitleLabel];
 
-    self.callHeroSubtitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(88, cardH - 75, self.callHeroCard.bounds.size.width - 240, 20)];
-    self.callHeroSubtitleLabel.stringValue = @"Aşağıdaki tuş takımından doğrudan numara çevirebilir veya gelen aramaları yanıtlayabilirsiniz.";
-    self.callHeroSubtitleLabel.font = [NSFont systemFontOfSize:13 weight:NSFontWeightRegular];
+    self.callHeroSubtitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(76, 44, 400, 20)];
+    self.callHeroSubtitleLabel.stringValue = @"Tuş takımından numara çevirebilir veya gelen aramaları masanızdan yanıtlayabilirsiniz.";
+    self.callHeroSubtitleLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
     self.callHeroSubtitleLabel.textColor = [NSColor secondaryLabelColor];
     self.callHeroSubtitleLabel.editable = NO;
     self.callHeroSubtitleLabel.bordered = NO;
     self.callHeroSubtitleLabel.backgroundColor = [NSColor clearColor];
-    self.callHeroSubtitleLabel.autoresizingMask = NSViewWidthSizable;
     [self.callHeroCard addSubview:self.callHeroSubtitleLabel];
 
-    // Call Action Buttons Stack
-    self.callHeroButtonStack = [[NSStackView alloc] initWithFrame:NSMakeRect(88, 16, self.callHeroCard.bounds.size.width - 108, 40)];
+    // Call Action Buttons (Right-aligned inside Hero Card)
+    self.callHeroButtonStack = [[NSStackView alloc] initWithFrame:NSMakeRect(self.callHeroCard.bounds.size.width - 450, 22, 434, 40)];
     self.callHeroButtonStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
-    self.callHeroButtonStack.spacing = 12;
+    self.callHeroButtonStack.spacing = 8;
     self.callHeroButtonStack.distribution = NSStackViewDistributionFillEqually;
-    self.callHeroButtonStack.autoresizingMask = NSViewWidthSizable;
+    self.callHeroButtonStack.autoresizingMask = NSViewMinXMargin;
     [self.callHeroCard addSubview:self.callHeroButtonStack];
 
     self.btnAnswerCall = [NSButton buttonWithTitle:@"📞 Cevapla" target:self action:@selector(actionAnswerClicked:)];
     self.btnAnswerCall.bezelStyle = NSBezelStyleRounded;
     self.btnAnswerCall.contentTintColor = [NSColor systemGreenColor];
-    self.btnAnswerCall.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
+    self.btnAnswerCall.font = [NSFont systemFontOfSize:12 weight:NSFontWeightBold];
     [self.callHeroButtonStack addArrangedSubview:self.btnAnswerCall];
 
-    self.btnAnswerSpeakerCall = [NSButton buttonWithTitle:@"🔊 Hoparlörle Aç" target:self action:@selector(actionAnswerSpeakerClicked:)];
+    self.btnAnswerSpeakerCall = [NSButton buttonWithTitle:@"🔊 Hoparlör" target:self action:@selector(actionAnswerSpeakerClicked:)];
     self.btnAnswerSpeakerCall.bezelStyle = NSBezelStyleRounded;
     self.btnAnswerSpeakerCall.contentTintColor = [NSColor systemBlueColor];
-    self.btnAnswerSpeakerCall.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
+    self.btnAnswerSpeakerCall.font = [NSFont systemFontOfSize:12 weight:NSFontWeightBold];
     [self.callHeroButtonStack addArrangedSubview:self.btnAnswerSpeakerCall];
 
     self.btnTransferComputerCall = [NSButton buttonWithTitle:@"💻 Bilgisayara Al" target:self action:@selector(actionTransferComputerClicked:)];
     self.btnTransferComputerCall.bezelStyle = NSBezelStyleRounded;
     self.btnTransferComputerCall.contentTintColor = [NSColor systemPurpleColor];
-    self.btnTransferComputerCall.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
+    self.btnTransferComputerCall.font = [NSFont systemFontOfSize:12 weight:NSFontWeightBold];
     [self.callHeroButtonStack addArrangedSubview:self.btnTransferComputerCall];
 
-    self.btnRejectCall = [NSButton buttonWithTitle:@"❌ Reddet / Kapat" target:self action:@selector(actionRejectClicked:)];
+    self.btnRejectCall = [NSButton buttonWithTitle:@"❌ Reddet" target:self action:@selector(actionRejectClicked:)];
     self.btnRejectCall.bezelStyle = NSBezelStyleRounded;
     self.btnRejectCall.contentTintColor = [NSColor systemRedColor];
-    self.btnRejectCall.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
+    self.btnRejectCall.font = [NSFont systemFontOfSize:12 weight:NSFontWeightBold];
     [self.callHeroButtonStack addArrangedSubview:self.btnRejectCall];
 
     self.callHeroButtonStack.hidden = YES;
 
-    // 2. Bottom Split: Left = Apple-style Dialpad (width: 340), Right = Recent Calls Card
-    CGFloat lowerH = cardY - (pad * 2);
-    NSBox *dialerCard = [[NSBox alloc] initWithFrame:NSMakeRect(pad, pad, 350, lowerH)];
+    // Lower Split Area:
+    // Left: Dialpad Card (width: 330px, height: 410px)
+    CGFloat lowerY = 184;
+    CGFloat lowerH = 410;
+    NSBox *dialerCard = [[NSBox alloc] initWithFrame:NSMakeRect(pad, lowerY, 330, lowerH)];
     dialerCard.boxType = NSBoxCustom;
     dialerCard.cornerRadius = 14;
     dialerCard.borderWidth = 1.0;
     dialerCard.borderColor = [NSColor separatorColor];
     dialerCard.fillColor = [NSColor controlBackgroundColor];
-    dialerCard.autoresizingMask = NSViewHeightSizable | NSViewMaxXMargin;
     [self.callsView addSubview:dialerCard];
 
-    // Dialer Number Input Field with SF Monospaced Digits
-    self.dialerNumberField = [[NSTextField alloc] initWithFrame:NSMakeRect(20, lowerH - 56, 255, 42)];
+    // Number Input & Backspace
+    self.dialerNumberField = [[NSTextField alloc] initWithFrame:NSMakeRect(16, 16, 240, 36)];
     self.dialerNumberField.placeholderString = @"Numara tuşlayın...";
-    self.dialerNumberField.font = [NSFont monospacedDigitSystemFontOfSize:24 weight:NSFontWeightBold];
+    self.dialerNumberField.font = [NSFont monospacedDigitSystemFontOfSize:22 weight:NSFontWeightBold];
     self.dialerNumberField.textColor = [NSColor labelColor];
     self.dialerNumberField.backgroundColor = [NSColor textBackgroundColor];
     self.dialerNumberField.bordered = YES;
@@ -446,87 +457,67 @@
     [dialerCard addSubview:self.dialerNumberField];
 
     NSButton *btnBackspace = [NSButton buttonWithTitle:@"⌫" target:self action:@selector(dialerBackspaceClicked:)];
-    btnBackspace.frame = NSMakeRect(284, lowerH - 56, 46, 42);
+    btnBackspace.frame = NSMakeRect(262, 16, 52, 36);
     btnBackspace.bezelStyle = NSBezelStyleRounded;
-    btnBackspace.font = [NSFont systemFontOfSize:18 weight:NSFontWeightBold];
+    btnBackspace.font = [NSFont systemFontOfSize:16 weight:NSFontWeightBold];
     [dialerCard addSubview:btnBackspace];
 
-    // Apple iPhone Style 3x4 Keypad with Letters
-    NSArray *keypadDefs = @[
-        @{@"num": @"1", @"sub": @""},
-        @{@"num": @"2", @"sub": @"ABC"},
-        @{@"num": @"3", @"sub": @"DEF"},
-        @{@"num": @"4", @"sub": @"GHI"},
-        @{@"num": @"5", @"sub": @"JKL"},
-        @{@"num": @"6", @"sub": @"MNO"},
-        @{@"num": @"7", @"sub": @"PQRS"},
-        @{@"num": @"8", @"sub": @"TUV"},
-        @{@"num": @"9", @"sub": @"WXYZ"},
-        @{@"num": @"*", @"sub": @""},
-        @{@"num": @"0", @"sub": @"+"},
-        @{@"num": @"#", @"sub": @""}
+    // 3x4 Clean Keypad Buttons
+    NSArray *digits = @[
+        @"1", @"2", @"3",
+        @"4", @"5", @"6",
+        @"7", @"8", @"9",
+        @"*", @"0", @"#"
     ];
 
-    CGFloat keyW = 92;
+    CGFloat keyW = 86;
     CGFloat keyH = 44;
-    CGFloat gridX = 20;
-    CGFloat gridY = lowerH - 114;
+    CGFloat gridStartX = 18;
+    CGFloat gridStartY = 66;
 
     for (int r = 0; r < 4; r++) {
         for (int c = 0; c < 3; c++) {
             int idx = r * 3 + c;
-            NSDictionary *def = keypadDefs[idx];
-            NSString *digit = def[@"num"];
-            NSString *letters = def[@"sub"];
+            NSString *digit = digits[idx];
 
-            NSButton *keyBtn = [[NSButton alloc] initWithFrame:NSMakeRect(gridX + (c * (keyW + 16)), gridY - (r * (keyH + 10)), keyW, keyH)];
+            NSButton *keyBtn = [[NSButton alloc] initWithFrame:NSMakeRect(gridStartX + (c * (keyW + 14)), gridStartY + (r * (keyH + 10)), keyW, keyH)];
+            keyBtn.title = digit;
             keyBtn.bezelStyle = NSBezelStyleRegularSquare;
             keyBtn.wantsLayer = YES;
             keyBtn.layer.cornerRadius = 8;
             keyBtn.layer.backgroundColor = [NSColor quaternaryLabelColor].CGColor;
             keyBtn.layer.borderWidth = 1.0;
             keyBtn.layer.borderColor = [NSColor separatorColor].CGColor;
+            keyBtn.font = [NSFont systemFontOfSize:18 weight:NSFontWeightBold];
+            keyBtn.contentTintColor = [NSColor labelColor];
             keyBtn.identifier = digit;
             keyBtn.target = self;
             keyBtn.action = @selector(dialerDigitClicked:);
-
-            // Multiline Attributed Title (Digit + Small Letters underneath)
-            NSMutableAttributedString *attr = [[NSMutableAttributedString alloc] initWithString:digit attributes:@{
-                NSFontAttributeName: [NSFont systemFontOfSize:17 weight:NSFontWeightBold],
-                NSForegroundColorAttributeName: [NSColor labelColor]
-            }];
-            if (letters.length > 0) {
-                [attr appendAttributedString:[[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"\n%@", letters] attributes:@{
-                    NSFontAttributeName: [NSFont systemFontOfSize:8 weight:NSFontWeightBold],
-                    NSForegroundColorAttributeName: [NSColor secondaryLabelColor]
-                }]];
-            }
-            keyBtn.attributedTitle = attr;
             [dialerCard addSubview:keyBtn];
         }
     }
 
-    // Call Action Button (Vibrant Apple Green)
+    // Call Button (Cleanly at y = 292, leaving generous margin)
     NSButton *btnCall = [NSButton buttonWithTitle:@"📞  Aramayı Başlat" target:self action:@selector(dialerCallClicked:)];
-    btnCall.frame = NSMakeRect(20, 14, 310, 44);
+    btnCall.frame = NSMakeRect(18, 292, 294, 42);
     btnCall.bezelStyle = NSBezelStyleRounded;
-    btnCall.font = [NSFont systemFontOfSize:15 weight:NSFontWeightBold];
+    btnCall.font = [NSFont systemFontOfSize:14 weight:NSFontWeightBold];
     btnCall.contentTintColor = [NSColor systemGreenColor];
     [dialerCard addSubview:btnCall];
 
-    // Right Side: Son Aramalar (Recent Calls Card)
-    CGFloat recentX = pad + 350 + 18;
+    // Right: Recent Calls Card
+    CGFloat recentX = pad + 330 + 18;
     CGFloat recentW = self.callsView.bounds.size.width - recentX - pad;
-    NSBox *recentCard = [[NSBox alloc] initWithFrame:NSMakeRect(recentX, pad, recentW, lowerH)];
+    NSBox *recentCard = [[NSBox alloc] initWithFrame:NSMakeRect(recentX, lowerY, recentW, lowerH)];
     recentCard.boxType = NSBoxCustom;
     recentCard.cornerRadius = 14;
     recentCard.borderWidth = 1.0;
     recentCard.borderColor = [NSColor separatorColor];
     recentCard.fillColor = [NSColor controlBackgroundColor];
-    recentCard.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    recentCard.autoresizingMask = NSViewWidthSizable;
     [self.callsView addSubview:recentCard];
 
-    NSTextField *recentHeader = [[NSTextField alloc] initWithFrame:NSMakeRect(18, lowerH - 42, recentW - 36, 22)];
+    NSTextField *recentHeader = [[NSTextField alloc] initWithFrame:NSMakeRect(16, 16, recentW - 32, 22)];
     recentHeader.stringValue = @"Son Aramalar";
     recentHeader.font = [NSFont systemFontOfSize:15 weight:NSFontWeightBold];
     recentHeader.textColor = [NSColor labelColor];
@@ -535,104 +526,89 @@
     recentHeader.backgroundColor = [NSColor clearColor];
     [recentCard addSubview:recentHeader];
 
-    self.recentCallsScrollView = [[NSScrollView alloc] initWithFrame:NSMakeRect(14, 14, recentW - 28, lowerH - 60)];
+    self.recentCallsScrollView = [[NSScrollView alloc] initWithFrame:NSMakeRect(12, 48, recentW - 24, lowerH - 64)];
     self.recentCallsScrollView.hasVerticalScroller = YES;
     self.recentCallsScrollView.drawsBackground = NO;
-    self.recentCallsScrollView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.recentCallsScrollView.autoresizingMask = NSViewWidthSizable;
     [recentCard addSubview:self.recentCallsScrollView];
 
-    NSView *recentDoc = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, recentW - 28, 100)];
-    recentDoc.autoresizingMask = NSViewWidthSizable;
-    self.recentCallsScrollView.documentView = recentDoc;
-
-    self.recentCallsStackView = [[NSStackView alloc] initWithFrame:recentDoc.bounds];
-    self.recentCallsStackView.orientation = NSUserInterfaceLayoutOrientationVertical;
-    self.recentCallsStackView.alignment = NSLayoutAttributeLeading;
-    self.recentCallsStackView.spacing = 8;
-    self.recentCallsStackView.autoresizingMask = NSViewWidthSizable;
-    [recentDoc addSubview:self.recentCallsStackView];
+    self.recentCallsDocView = [[MCFlippedView alloc] initWithFrame:NSMakeRect(0, 0, recentW - 24, 100)];
+    self.recentCallsDocView.autoresizingMask = NSViewWidthSizable;
+    self.recentCallsScrollView.documentView = self.recentCallsDocView;
 }
 
-#pragma mark - Tab 2: 🔔 Bildirimler (macOS Notification Center Feed)
+#pragma mark - Tab 2: 🔔 Bildirimler (Flipped Clean List)
 
-- (void)setupNotificationsTab {
-    self.notificationsView = [[NSView alloc] initWithFrame:self.contentContainerView.bounds];
+- (void)buildNotificationsTab {
+    self.notificationsView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
     CGFloat pad = 24;
 
-    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, self.notificationsView.bounds.size.height - 50, 180, 28)];
+    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 180, 28)];
     tabTitle.stringValue = @"Bildirimler";
     tabTitle.font = [NSFont systemFontOfSize:20 weight:NSFontWeightBold];
     tabTitle.textColor = [NSColor labelColor];
     tabTitle.editable = NO;
     tabTitle.bordered = NO;
     tabTitle.backgroundColor = [NSColor clearColor];
-    tabTitle.autoresizingMask = NSViewMinYMargin;
     [self.notificationsView addSubview:tabTitle];
 
-    self.notificationsCountBadge = [[NSTextField alloc] initWithFrame:NSMakeRect(145, self.notificationsView.bounds.size.height - 48, 80, 22)];
+    self.notificationsCountBadge = [[NSTextField alloc] initWithFrame:NSMakeRect(145, 52, 80, 22)];
     self.notificationsCountBadge.stringValue = @"(0)";
     self.notificationsCountBadge.font = [NSFont systemFontOfSize:14 weight:NSFontWeightSemibold];
     self.notificationsCountBadge.textColor = [NSColor secondaryLabelColor];
     self.notificationsCountBadge.editable = NO;
     self.notificationsCountBadge.bordered = NO;
     self.notificationsCountBadge.backgroundColor = [NSColor clearColor];
-    self.notificationsCountBadge.autoresizingMask = NSViewMinYMargin;
     [self.notificationsView addSubview:self.notificationsCountBadge];
 
     NSButton *btnClear = [NSButton buttonWithTitle:@"Tümünü Temizle" target:self action:@selector(clearAllNotificationsClicked:)];
-    btnClear.frame = NSMakeRect(self.notificationsView.bounds.size.width - 160, self.notificationsView.bounds.size.height - 50, 136, 28);
+    btnClear.frame = NSMakeRect(self.notificationsView.bounds.size.width - 160, 48, 136, 28);
     btnClear.bezelStyle = NSBezelStyleRounded;
-    btnClear.autoresizingMask = NSViewMinYMargin | NSViewMinXMargin;
+    btnClear.autoresizingMask = NSViewMinXMargin;
     [self.notificationsView addSubview:btnClear];
 
-    CGFloat listH = self.notificationsView.bounds.size.height - 76;
-    self.notificationsScrollView = [[NSScrollView alloc] initWithFrame:NSMakeRect(pad, 16, self.notificationsView.bounds.size.width - (pad * 2), listH)];
+    // Scrollable List
+    CGFloat listY = 92;
+    CGFloat listH = self.notificationsView.bounds.size.height - listY - 20;
+    self.notificationsScrollView = [[NSScrollView alloc] initWithFrame:NSMakeRect(pad, listY, self.notificationsView.bounds.size.width - (pad * 2), listH)];
     self.notificationsScrollView.hasVerticalScroller = YES;
     self.notificationsScrollView.drawsBackground = NO;
     self.notificationsScrollView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     [self.notificationsView addSubview:self.notificationsScrollView];
 
-    NSView *notifDoc = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, self.notificationsScrollView.bounds.size.width, 100)];
-    notifDoc.autoresizingMask = NSViewWidthSizable;
-    self.notificationsScrollView.documentView = notifDoc;
-
-    self.notificationsStackView = [[NSStackView alloc] initWithFrame:notifDoc.bounds];
-    self.notificationsStackView.orientation = NSUserInterfaceLayoutOrientationVertical;
-    self.notificationsStackView.alignment = NSLayoutAttributeLeading;
-    self.notificationsStackView.spacing = 10;
-    self.notificationsStackView.autoresizingMask = NSViewWidthSizable;
-    [notifDoc addSubview:self.notificationsStackView];
+    self.notificationsDocView = [[MCFlippedView alloc] initWithFrame:NSMakeRect(0, 0, self.notificationsScrollView.bounds.size.width, 100)];
+    self.notificationsDocView.autoresizingMask = NSViewWidthSizable;
+    self.notificationsScrollView.documentView = self.notificationsDocView;
 }
 
-#pragma mark - Tab 3: 🎵 Şimdi Çalıyor (macOS Control Center Now Playing)
+#pragma mark - Tab 3: 🎵 Şimdi Çalıyor
 
-- (void)setupMediaTab {
-    self.mediaView = [[NSView alloc] initWithFrame:self.contentContainerView.bounds];
+- (void)buildMediaTab {
+    self.mediaView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
     CGFloat pad = 24;
 
-    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, self.mediaView.bounds.size.height - 50, 300, 28)];
+    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 300, 28)];
     tabTitle.stringValue = @"Şimdi Çalıyor (Medya)";
     tabTitle.font = [NSFont systemFontOfSize:20 weight:NSFontWeightBold];
     tabTitle.textColor = [NSColor labelColor];
     tabTitle.editable = NO;
     tabTitle.bordered = NO;
     tabTitle.backgroundColor = [NSColor clearColor];
-    tabTitle.autoresizingMask = NSViewMinYMargin;
     [self.mediaView addSubview:tabTitle];
 
     CGFloat cardW = self.mediaView.bounds.size.width - (pad * 2);
-    CGFloat cardH = 260;
-    self.mediaHeroCard = [[NSBox alloc] initWithFrame:NSMakeRect(pad, self.mediaView.bounds.size.height - cardH - 74, cardW, cardH)];
+    CGFloat cardH = 200;
+    self.mediaHeroCard = [[NSBox alloc] initWithFrame:NSMakeRect(pad, 92, cardW, cardH)];
     self.mediaHeroCard.boxType = NSBoxCustom;
     self.mediaHeroCard.cornerRadius = 16;
     self.mediaHeroCard.borderWidth = 1.0;
     self.mediaHeroCard.borderColor = [NSColor separatorColor];
     self.mediaHeroCard.fillColor = [NSColor controlBackgroundColor];
-    self.mediaHeroCard.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
+    self.mediaHeroCard.autoresizingMask = NSViewWidthSizable;
     [self.mediaView addSubview:self.mediaHeroCard];
 
-    // Vinyl / Album Artwork Mock
-    NSBox *artBox = [[NSBox alloc] initWithFrame:NSMakeRect(24, cardH - 120, 96, 96)];
+    // Album Artwork Box
+    NSBox *artBox = [[NSBox alloc] initWithFrame:NSMakeRect(24, 28, 96, 96)];
     artBox.boxType = NSBoxCustom;
     artBox.cornerRadius = 14;
     artBox.borderWidth = 0;
@@ -641,14 +617,14 @@
 
     NSTextField *artIcon = [[NSTextField alloc] initWithFrame:artBox.bounds];
     artIcon.stringValue = @"🎵";
-    artIcon.font = [NSFont systemFontOfSize:48];
+    artIcon.font = [NSFont systemFontOfSize:44];
     artIcon.alignment = NSTextAlignmentCenter;
     artIcon.editable = NO;
     artIcon.bordered = NO;
     artIcon.backgroundColor = [NSColor clearColor];
     [artBox addSubview:artIcon];
 
-    self.mediaAppBadgeLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(136, cardH - 45, 200, 20)];
+    self.mediaAppBadgeLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(136, 26, 250, 20)];
     self.mediaAppBadgeLabel.stringValue = @"Spotify / Deezer";
     self.mediaAppBadgeLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightBold];
     self.mediaAppBadgeLabel.textColor = [NSColor systemGreenColor];
@@ -657,16 +633,16 @@
     self.mediaAppBadgeLabel.backgroundColor = [NSColor clearColor];
     [self.mediaHeroCard addSubview:self.mediaAppBadgeLabel];
 
-    self.mediaTitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(136, cardH - 85, cardW - 160, 34)];
+    self.mediaTitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(136, 52, cardW - 160, 32)];
     self.mediaTitleLabel.stringValue = @"Şu anda çalan müzik yok";
-    self.mediaTitleLabel.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
+    self.mediaTitleLabel.font = [NSFont systemFontOfSize:20 weight:NSFontWeightBold];
     self.mediaTitleLabel.textColor = [NSColor labelColor];
     self.mediaTitleLabel.editable = NO;
     self.mediaTitleLabel.bordered = NO;
     self.mediaTitleLabel.backgroundColor = [NSColor clearColor];
     [self.mediaHeroCard addSubview:self.mediaTitleLabel];
 
-    self.mediaArtistLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(136, cardH - 115, cardW - 160, 22)];
+    self.mediaArtistLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(136, 88, cardW - 160, 22)];
     self.mediaArtistLabel.stringValue = @"Telefonda Spotify veya Deezer açtığınızda parça bilgisi burada belirecektir.";
     self.mediaArtistLabel.font = [NSFont systemFontOfSize:14 weight:NSFontWeightMedium];
     self.mediaArtistLabel.textColor = [NSColor secondaryLabelColor];
@@ -675,7 +651,7 @@
     self.mediaArtistLabel.backgroundColor = [NSColor clearColor];
     [self.mediaHeroCard addSubview:self.mediaArtistLabel];
 
-    self.mediaStatusBadge = [[NSTextField alloc] initWithFrame:NSMakeRect(24, 24, 130, 24)];
+    self.mediaStatusBadge = [[NSTextField alloc] initWithFrame:NSMakeRect(136, 140, 130, 24)];
     self.mediaStatusBadge.stringValue = @"▶ Oynatılıyor";
     self.mediaStatusBadge.font = [NSFont systemFontOfSize:12 weight:NSFontWeightBold];
     self.mediaStatusBadge.textColor = [NSColor systemGreenColor];
@@ -684,45 +660,53 @@
     self.mediaStatusBadge.backgroundColor = [NSColor clearColor];
     [self.mediaHeroCard addSubview:self.mediaStatusBadge];
 
-    // Informative Card
-    NSTextField *infoNote = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 40, cardW, 70)];
+    // Info Card
+    NSBox *infoCard = [[NSBox alloc] initWithFrame:NSMakeRect(pad, 308, cardW, 80)];
+    infoCard.boxType = NSBoxCustom;
+    infoCard.cornerRadius = 12;
+    infoCard.fillColor = [NSColor quaternaryLabelColor];
+    infoCard.borderWidth = 0;
+    infoCard.autoresizingMask = NSViewWidthSizable;
+    [self.mediaView addSubview:infoCard];
+
+    NSTextField *infoNote = [[NSTextField alloc] initWithFrame:NSMakeRect(16, 12, cardW - 32, 56)];
     infoNote.stringValue = @"💡 Akıllı Medya Bildirim Filtresi:\nSpotify, Deezer ve YouTube Music gibi uygulamaların sürekli değişen şarkı bildirimleri Mac masaüstünüzü ve bildirim merkezinizi spamlamaz. Parça geçişleri sessizce bu ekranda toplanır.";
-    infoNote.font = [NSFont systemFontOfSize:13 weight:NSFontWeightRegular];
+    infoNote.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
     infoNote.textColor = [NSColor secondaryLabelColor];
     infoNote.editable = NO;
     infoNote.bordered = NO;
     infoNote.backgroundColor = [NSColor clearColor];
-    infoNote.autoresizingMask = NSViewWidthSizable | NSViewMaxYMargin;
-    [self.mediaView addSubview:infoNote];
+    [infoCard addSubview:infoNote];
 }
 
-#pragma mark - Tab 4: 📱 Cihaz & Pano (Universal Clipboard & Hardware Info)
+#pragma mark - Tab 4: 📱 Cihaz & Pano
 
-- (void)setupDeviceTab {
-    self.deviceView = [[NSView alloc] initWithFrame:self.contentContainerView.bounds];
+- (void)buildDeviceTab {
+    self.deviceView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
     CGFloat pad = 24;
 
-    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, self.deviceView.bounds.size.height - 50, 300, 28)];
+    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 350, 28)];
     tabTitle.stringValue = @"Cihaz ve Pano Senkronizasyonu";
     tabTitle.font = [NSFont systemFontOfSize:20 weight:NSFontWeightBold];
     tabTitle.textColor = [NSColor labelColor];
     tabTitle.editable = NO;
     tabTitle.bordered = NO;
     tabTitle.backgroundColor = [NSColor clearColor];
-    tabTitle.autoresizingMask = NSViewMinYMargin;
     [self.deviceView addSubview:tabTitle];
 
     CGFloat cardW = self.deviceView.bounds.size.width - (pad * 2);
-    NSBox *infoCard = [[NSBox alloc] initWithFrame:NSMakeRect(pad, self.deviceView.bounds.size.height - 180, cardW, 116)];
+
+    // Hardware Card
+    NSBox *infoCard = [[NSBox alloc] initWithFrame:NSMakeRect(pad, 92, cardW, 100)];
     infoCard.boxType = NSBoxCustom;
     infoCard.cornerRadius = 14;
     infoCard.borderWidth = 1.0;
     infoCard.borderColor = [NSColor separatorColor];
     infoCard.fillColor = [NSColor controlBackgroundColor];
-    infoCard.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
+    infoCard.autoresizingMask = NSViewWidthSizable;
     [self.deviceView addSubview:infoCard];
 
-    self.deviceModelLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 72, cardW - 40, 24)];
+    self.deviceModelLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 16, cardW - 40, 22)];
     self.deviceModelLabel.stringValue = @"Cihaz: Telefon Bekleniyor...";
     self.deviceModelLabel.font = [NSFont systemFontOfSize:15 weight:NSFontWeightBold];
     self.deviceModelLabel.textColor = [NSColor labelColor];
@@ -731,121 +715,146 @@
     self.deviceModelLabel.backgroundColor = [NSColor clearColor];
     [infoCard addSubview:self.deviceModelLabel];
 
-    self.deviceStatusFullLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 46, cardW - 40, 20)];
+    self.deviceStatusFullLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 42, cardW - 40, 18)];
     self.deviceStatusFullLabel.stringValue = @"Bağlantı: Bluetooth RFCOMM (Bağlantı Yok)";
-    self.deviceStatusFullLabel.font = [NSFont systemFontOfSize:13 weight:NSFontWeightRegular];
+    self.deviceStatusFullLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
     self.deviceStatusFullLabel.textColor = [NSColor secondaryLabelColor];
     self.deviceStatusFullLabel.editable = NO;
     self.deviceStatusFullLabel.bordered = NO;
     self.deviceStatusFullLabel.backgroundColor = [NSColor clearColor];
     [infoCard addSubview:self.deviceStatusFullLabel];
 
-    self.deviceBatteryFullLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 18, cardW - 40, 20)];
+    self.deviceBatteryFullLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 64, cardW - 40, 18)];
     self.deviceBatteryFullLabel.stringValue = @"Pil Durumu: --";
-    self.deviceBatteryFullLabel.font = [NSFont systemFontOfSize:13 weight:NSFontWeightRegular];
+    self.deviceBatteryFullLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
     self.deviceBatteryFullLabel.textColor = [NSColor secondaryLabelColor];
     self.deviceBatteryFullLabel.editable = NO;
     self.deviceBatteryFullLabel.bordered = NO;
     self.deviceBatteryFullLabel.backgroundColor = [NSColor clearColor];
     [infoCard addSubview:self.deviceBatteryFullLabel];
 
-    // Universal Clipboard Section
-    CGFloat clipY = self.deviceView.bounds.size.height - 355;
-    NSTextField *clipTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, clipY + 135, cardW, 22)];
-    clipTitle.stringValue = @"Telefona Metin Gönder (Evrensel Pano)";
-    clipTitle.font = [NSFont systemFontOfSize:14 weight:NSFontWeightBold];
-    clipTitle.textColor = [NSColor labelColor];
-    clipTitle.editable = NO;
-    clipTitle.bordered = NO;
-    clipTitle.backgroundColor = [NSColor clearColor];
-    clipTitle.autoresizingMask = NSViewMinYMargin;
-    [self.deviceView addSubview:clipTitle];
+    // Send Clipboard Card
+    NSBox *sendCard = [[NSBox alloc] initWithFrame:NSMakeRect(pad, 208, cardW, 150)];
+    sendCard.boxType = NSBoxCustom;
+    sendCard.cornerRadius = 14;
+    sendCard.borderWidth = 1.0;
+    sendCard.borderColor = [NSColor separatorColor];
+    sendCard.fillColor = [NSColor controlBackgroundColor];
+    sendCard.autoresizingMask = NSViewWidthSizable;
+    [self.deviceView addSubview:sendCard];
 
-    NSScrollView *sendScroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(pad, clipY + 35, cardW, 90)];
+    NSTextField *sendTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(16, 12, cardW - 32, 20)];
+    sendTitle.stringValue = @"Telefona Metin Gönder (Evrensel Pano)";
+    sendTitle.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
+    sendTitle.textColor = [NSColor labelColor];
+    sendTitle.editable = NO;
+    sendTitle.bordered = NO;
+    sendTitle.backgroundColor = [NSColor clearColor];
+    [sendCard addSubview:sendTitle];
+
+    NSScrollView *sendScroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(16, 38, cardW - 32, 64)];
     sendScroll.hasVerticalScroller = YES;
-    sendScroll.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
+    sendScroll.autoresizingMask = NSViewWidthSizable;
     self.sendClipboardTextView = [[NSTextView alloc] initWithFrame:sendScroll.bounds];
     self.sendClipboardTextView.font = [NSFont systemFontOfSize:13];
     sendScroll.documentView = self.sendClipboardTextView;
-    [self.deviceView addSubview:sendScroll];
+    [sendCard addSubview:sendScroll];
 
     NSButton *btnSendClip = [NSButton buttonWithTitle:@"Telefona Gönder" target:self action:@selector(sendClipboardClicked:)];
-    btnSendClip.frame = NSMakeRect(pad, clipY, 160, 28);
+    btnSendClip.frame = NSMakeRect(16, 110, 150, 28);
     btnSendClip.bezelStyle = NSBezelStyleRounded;
-    btnSendClip.autoresizingMask = NSViewMinYMargin;
-    [self.deviceView addSubview:btnSendClip];
+    [sendCard addSubview:btnSendClip];
 
-    NSTextField *recvTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, clipY - 35, cardW, 22)];
+    // Received Clipboard Card
+    NSBox *recvCard = [[NSBox alloc] initWithFrame:NSMakeRect(pad, 374, cardW, 140)];
+    recvCard.boxType = NSBoxCustom;
+    recvCard.cornerRadius = 14;
+    recvCard.borderWidth = 1.0;
+    recvCard.borderColor = [NSColor separatorColor];
+    recvCard.fillColor = [NSColor controlBackgroundColor];
+    recvCard.autoresizingMask = NSViewWidthSizable;
+    [self.deviceView addSubview:recvCard];
+
+    NSTextField *recvTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(16, 12, cardW - 32, 20)];
     recvTitle.stringValue = @"Telefondan Alınan Son Pano İçeriği";
-    recvTitle.font = [NSFont systemFontOfSize:14 weight:NSFontWeightBold];
+    recvTitle.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
     recvTitle.textColor = [NSColor labelColor];
     recvTitle.editable = NO;
     recvTitle.bordered = NO;
     recvTitle.backgroundColor = [NSColor clearColor];
-    recvTitle.autoresizingMask = NSViewMinYMargin;
-    [self.deviceView addSubview:recvTitle];
+    [recvCard addSubview:recvTitle];
 
-    NSScrollView *recvScroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(pad, 20, cardW, clipY - 65)];
+    NSScrollView *recvScroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(16, 38, cardW - 32, 86)];
     recvScroll.hasVerticalScroller = YES;
-    recvScroll.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    recvScroll.autoresizingMask = NSViewWidthSizable;
     self.receivedClipboardTextView = [[NSTextView alloc] initWithFrame:recvScroll.bounds];
     self.receivedClipboardTextView.editable = NO;
     self.receivedClipboardTextView.font = [NSFont systemFontOfSize:13];
     recvScroll.documentView = self.receivedClipboardTextView;
-    [self.deviceView addSubview:recvScroll];
+    [recvCard addSubview:recvScroll];
 }
 
-#pragma mark - Tab 5: ⚙️ Ayarlar (System Settings Style)
+#pragma mark - Tab 5: ⚙️ Ayarlar
 
-- (void)setupSettingsTab {
-    self.settingsView = [[NSView alloc] initWithFrame:self.contentContainerView.bounds];
-    CGFloat pad = 28;
+- (void)buildSettingsTab {
+    self.settingsView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
+    CGFloat pad = 24;
 
-    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, self.settingsView.bounds.size.height - 50, 300, 28)];
+    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 300, 28)];
     tabTitle.stringValue = @"Ayarlar ve Tercihler";
     tabTitle.font = [NSFont systemFontOfSize:20 weight:NSFontWeightBold];
     tabTitle.textColor = [NSColor labelColor];
     tabTitle.editable = NO;
     tabTitle.bordered = NO;
     tabTitle.backgroundColor = [NSColor clearColor];
-    tabTitle.autoresizingMask = NSViewMinYMargin;
     [self.settingsView addSubview:tabTitle];
 
-    CGFloat optY = self.settingsView.bounds.size.height - 110;
+    CGFloat cardW = self.settingsView.bounds.size.width - (pad * 2);
+
+    NSBox *optionsCard = [[NSBox alloc] initWithFrame:NSMakeRect(pad, 92, cardW, 150)];
+    optionsCard.boxType = NSBoxCustom;
+    optionsCard.cornerRadius = 14;
+    optionsCard.borderWidth = 1.0;
+    optionsCard.borderColor = [NSColor separatorColor];
+    optionsCard.fillColor = [NSColor controlBackgroundColor];
+    optionsCard.autoresizingMask = NSViewWidthSizable;
+    [self.settingsView addSubview:optionsCard];
 
     self.checkFilterMedia = [NSButton checkboxWithTitle:@"Müzik çalar bildirimlerini sessize al ve filtrele (Spotify, Deezer vb.)" target:nil action:nil];
-    self.checkFilterMedia.frame = NSMakeRect(pad, optY, 540, 24);
+    self.checkFilterMedia.frame = NSMakeRect(20, 18, cardW - 40, 24);
     self.checkFilterMedia.state = NSControlStateValueOn;
     self.checkFilterMedia.font = [NSFont systemFontOfSize:13 weight:NSFontWeightMedium];
-    self.checkFilterMedia.autoresizingMask = NSViewMinYMargin;
-    [self.settingsView addSubview:self.checkFilterMedia];
+    [optionsCard addSubview:self.checkFilterMedia];
 
-    optY -= 42;
     self.checkAutoRaiseOnCall = [NSButton checkboxWithTitle:@"Gelen arama olduğunda MacConnect penceresini otomatik öne getir" target:nil action:nil];
-    self.checkAutoRaiseOnCall.frame = NSMakeRect(pad, optY, 540, 24);
+    self.checkAutoRaiseOnCall.frame = NSMakeRect(20, 60, cardW - 40, 24);
     self.checkAutoRaiseOnCall.state = NSControlStateValueOn;
     self.checkAutoRaiseOnCall.font = [NSFont systemFontOfSize:13 weight:NSFontWeightMedium];
-    self.checkAutoRaiseOnCall.autoresizingMask = NSViewMinYMargin;
-    [self.settingsView addSubview:self.checkAutoRaiseOnCall];
+    [optionsCard addSubview:self.checkAutoRaiseOnCall];
 
-    optY -= 42;
     self.checkPlaySound = [NSButton checkboxWithTitle:@"Bildirim geldiğinde yerel sistem sesini çal" target:nil action:nil];
-    self.checkPlaySound.frame = NSMakeRect(pad, optY, 540, 24);
+    self.checkPlaySound.frame = NSMakeRect(20, 102, cardW - 40, 24);
     self.checkPlaySound.state = NSControlStateValueOn;
     self.checkPlaySound.font = [NSFont systemFontOfSize:13 weight:NSFontWeightMedium];
-    self.checkPlaySound.autoresizingMask = NSViewMinYMargin;
-    [self.settingsView addSubview:self.checkPlaySound];
+    [optionsCard addSubview:self.checkPlaySound];
 
-    optY -= 75;
-    NSTextField *aboutBox = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, optY, 540, 60)];
-    aboutBox.stringValue = @"MacConnect v1.0.2 • Native macOS Sequoia Entegrasyonu\nDoğrudan donanım seviyesinde Bluetooth RFCOMM köprüsü ile telefon ve Mac senkronizasyonu.\nGeliştirici: canmertdogan";
+    NSBox *aboutCard = [[NSBox alloc] initWithFrame:NSMakeRect(pad, 258, cardW, 80)];
+    aboutCard.boxType = NSBoxCustom;
+    aboutCard.cornerRadius = 14;
+    aboutCard.borderWidth = 1.0;
+    aboutCard.borderColor = [NSColor separatorColor];
+    aboutCard.fillColor = [NSColor controlBackgroundColor];
+    aboutCard.autoresizingMask = NSViewWidthSizable;
+    [self.settingsView addSubview:aboutCard];
+
+    NSTextField *aboutBox = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 16, cardW - 40, 48)];
+    aboutBox.stringValue = @"MacConnect v1.0.2 • Native macOS Entegrasyonu\nDoğrudan donanım seviyesinde Bluetooth RFCOMM köprüsü ile telefon ve Mac senkronizasyonu.\nGeliştirici: canmertdogan";
     aboutBox.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
     aboutBox.textColor = [NSColor secondaryLabelColor];
     aboutBox.editable = NO;
     aboutBox.bordered = NO;
     aboutBox.backgroundColor = [NSColor clearColor];
-    aboutBox.autoresizingMask = NSViewMinYMargin;
-    [self.settingsView addSubview:aboutBox];
+    [aboutCard addSubview:aboutBox];
 }
 
 #pragma mark - Call Actions
@@ -916,20 +925,25 @@
 }
 
 - (void)rebuildRecentCallsStack {
-    for (NSView *v in self.recentCallsStackView.arrangedSubviews) {
-        [self.recentCallsStackView removeArrangedSubview:v];
+    for (NSView *v in self.recentCallsDocView.subviews) {
         [v removeFromSuperview];
     }
 
+    CGFloat itemH = 50;
+    CGFloat gap = 6;
+    CGFloat y = 0;
+    CGFloat w = self.recentCallsDocView.bounds.size.width;
+
     for (NSDictionary *call in self.recentCalls) {
-        NSBox *itemBox = [[NSBox alloc] initWithFrame:NSMakeRect(0, 0, 260, 48)];
+        NSBox *itemBox = [[NSBox alloc] initWithFrame:NSMakeRect(0, y, w, itemH)];
         itemBox.boxType = NSBoxCustom;
         itemBox.cornerRadius = 8;
         itemBox.fillColor = [NSColor quaternaryLabelColor];
         itemBox.borderWidth = 1.0;
         itemBox.borderColor = [NSColor separatorColor];
+        itemBox.autoresizingMask = NSViewWidthSizable;
 
-        NSTextField *lbl = [[NSTextField alloc] initWithFrame:NSMakeRect(10, 22, 170, 18)];
+        NSTextField *lbl = [[NSTextField alloc] initWithFrame:NSMakeRect(10, 8, w - 85, 18)];
         lbl.stringValue = call[@"name"] ?: call[@"number"];
         lbl.font = [NSFont systemFontOfSize:12 weight:NSFontWeightBold];
         lbl.textColor = [NSColor labelColor];
@@ -938,7 +952,7 @@
         lbl.backgroundColor = [NSColor clearColor];
         [itemBox addSubview:lbl];
 
-        NSTextField *sub = [[NSTextField alloc] initWithFrame:NSMakeRect(10, 4, 170, 16)];
+        NSTextField *sub = [[NSTextField alloc] initWithFrame:NSMakeRect(10, 26, w - 85, 16)];
         sub.stringValue = call[@"time"] ?: @"";
         sub.font = [NSFont systemFontOfSize:10];
         sub.textColor = [NSColor secondaryLabelColor];
@@ -948,13 +962,17 @@
         [itemBox addSubview:sub];
 
         NSButton *btnRedial = [NSButton buttonWithTitle:@"Ara" target:self action:@selector(redialClicked:)];
-        btnRedial.frame = NSMakeRect(190, 10, 60, 26);
+        btnRedial.frame = NSMakeRect(w - 70, 12, 60, 26);
         btnRedial.bezelStyle = NSBezelStyleRounded;
         btnRedial.identifier = call[@"number"];
+        btnRedial.autoresizingMask = NSViewMinXMargin;
         [itemBox addSubview:btnRedial];
 
-        [self.recentCallsStackView addArrangedSubview:itemBox];
+        [self.recentCallsDocView addSubview:itemBox];
+        y += itemH + gap;
     }
+
+    self.recentCallsDocView.frame = NSMakeRect(0, 0, w, MAX(y, self.recentCallsScrollView.bounds.size.height));
 }
 
 - (void)redialClicked:(NSButton *)sender {
@@ -998,7 +1016,7 @@
         self.callHeroCard.fillColor = [NSColor controlBackgroundColor];
         self.callHeroAvatarLabel.stringValue = @"📞";
         self.callHeroTitleLabel.stringValue = @"Aktif Arama Yok";
-        self.callHeroSubtitleLabel.stringValue = @"Aşağıdaki tuş takımından doğrudan numara çevirebilir veya gelen aramaları yanıtlayabilirsiniz.";
+        self.callHeroSubtitleLabel.stringValue = @"Tuş takımından numara çevirebilir veya gelen aramaları masanızdan yanıtlayabilirsiniz.";
         self.callHeroButtonStack.hidden = YES;
     });
 }
@@ -1024,24 +1042,29 @@
 }
 
 - (void)rebuildNotificationsStack {
-    for (NSView *v in self.notificationsStackView.arrangedSubviews) {
-        [self.notificationsStackView removeArrangedSubview:v];
+    for (NSView *v in self.notificationsDocView.subviews) {
         [v removeFromSuperview];
     }
+
+    CGFloat itemH = 68;
+    CGFloat gap = 8;
+    CGFloat y = 0;
+    CGFloat w = self.notificationsDocView.bounds.size.width;
 
     for (NSDictionary *n in self.notificationsList) {
         NSString *app = n[@"app_name"] ?: @"Uygulama";
         NSString *title = n[@"title"] ?: @"";
         NSString *text = n[@"text"] ?: @"";
 
-        NSBox *card = [[NSBox alloc] initWithFrame:NSMakeRect(0, 0, self.notificationsScrollView.bounds.size.width - 32, 74)];
+        NSBox *card = [[NSBox alloc] initWithFrame:NSMakeRect(0, y, w, itemH)];
         card.boxType = NSBoxCustom;
         card.cornerRadius = 10;
         card.fillColor = [NSColor controlBackgroundColor];
         card.borderWidth = 1.0;
         card.borderColor = [NSColor separatorColor];
+        card.autoresizingMask = NSViewWidthSizable;
 
-        NSTextField *appLbl = [[NSTextField alloc] initWithFrame:NSMakeRect(14, 48, 220, 16)];
+        NSTextField *appLbl = [[NSTextField alloc] initWithFrame:NSMakeRect(14, 8, 220, 16)];
         appLbl.stringValue = app;
         appLbl.font = [NSFont systemFontOfSize:11 weight:NSFontWeightBold];
         appLbl.textColor = [NSColor controlAccentColor];
@@ -1050,7 +1073,7 @@
         appLbl.backgroundColor = [NSColor clearColor];
         [card addSubview:appLbl];
 
-        NSTextField *titleLbl = [[NSTextField alloc] initWithFrame:NSMakeRect(14, 28, card.bounds.size.width - 110, 18)];
+        NSTextField *titleLbl = [[NSTextField alloc] initWithFrame:NSMakeRect(14, 26, w - 100, 18)];
         titleLbl.stringValue = title;
         titleLbl.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
         titleLbl.textColor = [NSColor labelColor];
@@ -1059,7 +1082,7 @@
         titleLbl.backgroundColor = [NSColor clearColor];
         [card addSubview:titleLbl];
 
-        NSTextField *textLbl = [[NSTextField alloc] initWithFrame:NSMakeRect(14, 8, card.bounds.size.width - 110, 18)];
+        NSTextField *textLbl = [[NSTextField alloc] initWithFrame:NSMakeRect(14, 44, w - 100, 18)];
         textLbl.stringValue = text;
         textLbl.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
         textLbl.textColor = [NSColor secondaryLabelColor];
@@ -1069,13 +1092,17 @@
         [card addSubview:textLbl];
 
         NSButton *btnCopy = [NSButton buttonWithTitle:@"Kopyala" target:self action:@selector(copyNotificationClicked:)];
-        btnCopy.frame = NSMakeRect(card.bounds.size.width - 86, 22, 72, 26);
+        btnCopy.frame = NSMakeRect(w - 84, 20, 72, 26);
         btnCopy.bezelStyle = NSBezelStyleRounded;
         btnCopy.identifier = text.length > 0 ? text : title;
+        btnCopy.autoresizingMask = NSViewMinXMargin;
         [card addSubview:btnCopy];
 
-        [self.notificationsStackView addArrangedSubview:card];
+        [self.notificationsDocView addSubview:card];
+        y += itemH + gap;
     }
+
+    self.notificationsDocView.frame = NSMakeRect(0, 0, w, MAX(y, self.notificationsScrollView.bounds.size.height));
 }
 
 - (void)copyNotificationClicked:(NSButton *)sender {
