@@ -273,7 +273,7 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
 
 // Calls Tab Components
 @property (nonatomic, strong) MCGlassCardView *callHeroCard;
-@property (nonatomic, strong) NSTextField *callHeroAvatarLabel;
+@property (nonatomic, strong) NSImageView *callHeroAvatarImageView;
 @property (nonatomic, strong) NSTextField *callHeroTitleLabel;
 @property (nonatomic, strong) NSTextField *callHeroSubtitleLabel;
 @property (nonatomic, strong) NSStackView *callHeroButtonStack;
@@ -603,26 +603,25 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     self.callHeroCard.autoresizingMask = NSViewWidthSizable;
     [self.callsView addSubview:self.callHeroCard];
 
-    // Left Circle Avatar with Glow
-    NSBox *avatarCircle = [[NSBox alloc] initWithFrame:NSMakeRect(18, 20, 50, 50)];
-    avatarCircle.boxType = NSBoxCustom;
-    avatarCircle.cornerRadius = 25;
-    avatarCircle.borderWidth = 1.0;
-    avatarCircle.borderColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.25];
-    avatarCircle.fillColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.10];
+    // Left Circle Avatar with Glow (Using native MCGlassCardView and perfectly centered SF Symbol)
+    MCGlassCardView *avatarCircle = [[MCGlassCardView alloc] initWithFrame:NSMakeRect(18, 20, 50, 50)];
+    avatarCircle.glassCornerRadius = 25;
+    avatarCircle.glassFillColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.12];
+    avatarCircle.glassStrokeColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.25];
     [self.callHeroCard addSubview:avatarCircle];
 
-    self.callHeroAvatarLabel = [[NSTextField alloc] initWithFrame:avatarCircle.bounds];
-    self.callHeroAvatarLabel.stringValue = @"📞";
-    self.callHeroAvatarLabel.font = [NSFont systemFontOfSize:24];
-    self.callHeroAvatarLabel.alignment = NSTextAlignmentCenter;
-    self.callHeroAvatarLabel.editable = NO;
-    self.callHeroAvatarLabel.bordered = NO;
-    self.callHeroAvatarLabel.backgroundColor = [NSColor clearColor];
-    [avatarCircle addSubview:self.callHeroAvatarLabel];
+    self.callHeroAvatarImageView = [[NSImageView alloc] initWithFrame:NSMakeRect(13, 13, 24, 24)];
+    self.callHeroAvatarImageView.imageScaling = NSImageScaleProportionallyUpOrDown;
+    if (@available(macOS 11.0, *)) {
+        NSImageSymbolConfiguration *cfg = [NSImageSymbolConfiguration configurationWithPointSize:20 weight:NSFontWeightMedium];
+        NSImage *img = [[NSImage imageWithSystemSymbolName:@"phone.fill" accessibilityDescription:nil] imageWithSymbolConfiguration:cfg];
+        self.callHeroAvatarImageView.image = img;
+        self.callHeroAvatarImageView.contentTintColor = [NSColor whiteColor];
+    }
+    [avatarCircle addSubview:self.callHeroAvatarImageView];
 
     // Name & Subtitle
-    self.callHeroTitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(80, 18, self.callHeroCard.bounds.size.width - 520, 26)];
+    self.callHeroTitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(82, 16, self.callHeroCard.bounds.size.width - 520, 26)];
     self.callHeroTitleLabel.autoresizingMask = NSViewWidthSizable;
     self.callHeroTitleLabel.stringValue = @"Aktif Arama Yok";
     self.callHeroTitleLabel.font = [NSFont systemFontOfSize:17 weight:NSFontWeightBold];
@@ -632,7 +631,7 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     self.callHeroTitleLabel.backgroundColor = [NSColor clearColor];
     [self.callHeroCard addSubview:self.callHeroTitleLabel];
 
-    self.callHeroSubtitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(80, 48, self.callHeroCard.bounds.size.width - 520, 24)];
+    self.callHeroSubtitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(82, 44, self.callHeroCard.bounds.size.width - 100, 38)];
     self.callHeroSubtitleLabel.autoresizingMask = NSViewWidthSizable;
     self.callHeroSubtitleLabel.stringValue = @"Tuş takımından numara arayabilir veya gelen aramaları masanızdan yanıtlayabilirsiniz.";
     self.callHeroSubtitleLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
@@ -640,6 +639,8 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     self.callHeroSubtitleLabel.editable = NO;
     self.callHeroSubtitleLabel.bordered = NO;
     self.callHeroSubtitleLabel.backgroundColor = [NSColor clearColor];
+    self.callHeroSubtitleLabel.cell.wraps = YES;
+    self.callHeroSubtitleLabel.cell.scrollable = NO;
     [self.callHeroCard addSubview:self.callHeroSubtitleLabel];
 
     // Call Action Buttons (Right-aligned inside Hero Card)
@@ -1117,7 +1118,12 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
 
     self.callHeroCard.glassFillColor = [NSColor colorWithCalibratedRed:0.10 green:0.35 blue:0.18 alpha:0.4];
     self.callHeroCard.glassStrokeColor = [NSColor colorWithCalibratedRed:0.18 green:0.80 blue:0.44 alpha:0.6];
-    self.callHeroTitleLabel.stringValue = [NSString stringWithFormat:@"📞 Aranıyor: %@", number];
+    if (@available(macOS 11.0, *)) {
+        NSImageSymbolConfiguration *cfg = [NSImageSymbolConfiguration configurationWithPointSize:20 weight:NSFontWeightMedium];
+        self.callHeroAvatarImageView.image = [[NSImage imageWithSystemSymbolName:@"phone.arrow.up.right.fill" accessibilityDescription:nil] imageWithSymbolConfiguration:cfg];
+        self.callHeroAvatarImageView.contentTintColor = [NSColor colorWithCalibratedRed:0.25 green:0.90 blue:0.45 alpha:1.0];
+    }
+    self.callHeroTitleLabel.stringValue = [NSString stringWithFormat:@"Aranıyor: %@", number];
     self.callHeroSubtitleLabel.stringValue = @"Arama komutu telefona iletildi.";
     self.callHeroButtonStack.hidden = NO;
     self.btnAnswerCall.hidden = YES;
@@ -1206,7 +1212,11 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
 
         self.callHeroCard.glassFillColor = [NSColor colorWithCalibratedRed:0.45 green:0.12 blue:0.14 alpha:0.45];
         self.callHeroCard.glassStrokeColor = [NSColor colorWithCalibratedRed:0.95 green:0.27 blue:0.27 alpha:0.7];
-        self.callHeroAvatarLabel.stringValue = @"🔔";
+        if (@available(macOS 11.0, *)) {
+            NSImageSymbolConfiguration *cfg = [NSImageSymbolConfiguration configurationWithPointSize:20 weight:NSFontWeightMedium];
+            self.callHeroAvatarImageView.image = [[NSImage imageWithSystemSymbolName:@"phone.arrow.down.left.fill" accessibilityDescription:nil] imageWithSymbolConfiguration:cfg];
+            self.callHeroAvatarImageView.contentTintColor = [NSColor colorWithCalibratedRed:1.0 green:0.35 blue:0.35 alpha:1.0];
+        }
         self.callHeroTitleLabel.stringValue = [NSString stringWithFormat:@"Gelen Arama: %@", name];
         self.callHeroSubtitleLabel.stringValue = [NSString stringWithFormat:@"%@ • %@", number, appName];
 
@@ -1228,7 +1238,11 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
         self.activeCallInfo = nil;
         self.callHeroCard.glassFillColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.07];
         self.callHeroCard.glassStrokeColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.18];
-        self.callHeroAvatarLabel.stringValue = @"📞";
+        if (@available(macOS 11.0, *)) {
+            NSImageSymbolConfiguration *cfg = [NSImageSymbolConfiguration configurationWithPointSize:20 weight:NSFontWeightMedium];
+            self.callHeroAvatarImageView.image = [[NSImage imageWithSystemSymbolName:@"phone.fill" accessibilityDescription:nil] imageWithSymbolConfiguration:cfg];
+            self.callHeroAvatarImageView.contentTintColor = [NSColor whiteColor];
+        }
         self.callHeroTitleLabel.stringValue = @"Aktif Arama Yok";
         self.callHeroSubtitleLabel.stringValue = @"Tuş takımından numara arayabilir veya gelen aramaları masanızdan yanıtlayabilirsiniz.";
         self.callHeroButtonStack.hidden = YES;
