@@ -9,7 +9,6 @@
 - (void)updateDeviceState:(MacConnectState)state name:(NSString *)name;
 - (void)updateBatteryLevel:(NSInteger)level;
 - (void)addNotification:(NSDictionary *)notification;
-- (void)updateMediaPlayback:(NSDictionary *)mediaInfo;
 - (void)showIncomingCall:(NSDictionary *)callInfo;
 - (void)dismissIncomingCall;
 - (void)updateCallStatus:(NSString *)status message:(NSString *)message;

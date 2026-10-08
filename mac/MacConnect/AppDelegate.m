@@ -408,7 +408,7 @@
 }
 
 - (void)bridge:(BluetoothBridge *)bridge didReceiveMediaPlayback:(NSDictionary *)mediaInfo {
-    [[MainWindowController sharedController] updateMediaPlayback:mediaInfo];
+    // Suppressed: Media tab removed from macOS client
 }
 
 - (void)bridge:(BluetoothBridge *)bridge didUpdateCallStatus:(NSString *)status message:(NSString *)message {

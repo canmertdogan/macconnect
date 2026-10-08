@@ -326,7 +326,6 @@ static NSString *MCFindScrcpyPath(void) {
 // Tab Views
 @property (nonatomic, strong) MCFlippedView *callsView;
 @property (nonatomic, strong) MCFlippedView *notificationsView;
-@property (nonatomic, strong) MCFlippedView *mediaView;
 @property (nonatomic, strong) MCFlippedView *deviceView;
 @property (nonatomic, strong) MCFlippedView *mirrorView;
 @property (nonatomic, strong) MCFlippedView *settingsView;
@@ -351,8 +350,6 @@ static NSString *MCFindScrcpyPath(void) {
 @property (nonatomic, strong) NSTextField *callHeroSubtitleLabel;
 @property (nonatomic, strong) NSStackView *callHeroButtonStack;
 @property (nonatomic, strong) MCGlassButton *btnAnswerCall;
-@property (nonatomic, strong) MCGlassButton *btnAnswerSpeakerCall;
-@property (nonatomic, strong) MCGlassButton *btnTransferComputerCall;
 @property (nonatomic, strong) MCGlassButton *btnRejectCall;
 
 @property (nonatomic, strong) NSTextField *dialerNumberField;
@@ -366,13 +363,6 @@ static NSString *MCFindScrcpyPath(void) {
 @property (nonatomic, strong) NSScrollView *notificationsScrollView;
 @property (nonatomic, strong) MCFlippedView *notificationsDocView;
 @property (nonatomic, strong) NSMutableArray<NSDictionary *> *notificationsList;
-
-// Media Tab Components
-@property (nonatomic, strong) MCGlassCardView *mediaHeroCard;
-@property (nonatomic, strong) NSTextField *mediaAppBadgeLabel;
-@property (nonatomic, strong) NSTextField *mediaTitleLabel;
-@property (nonatomic, strong) NSTextField *mediaArtistLabel;
-@property (nonatomic, strong) NSTextField *mediaStatusBadge;
 
 // Device Tab Components
 @property (nonatomic, strong) NSTextField *deviceModelLabel;
@@ -495,10 +485,9 @@ static NSString *MCFindScrcpyPath(void) {
     self.contentContainerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     [self.contentEffectView addSubview:self.contentContainerView];
 
-    // 3. Build All 6 Liquid Glass Tab Views
+    // 3. Build All 5 Liquid Glass Tab Views
     [self buildCallsTab];
     [self buildNotificationsTab];
-    [self buildMediaTab];
     [self buildDeviceTab];
     [self buildScreenMirroringTab];
     [self buildSettingsTab];
@@ -548,20 +537,19 @@ static NSString *MCFindScrcpyPath(void) {
     self.sidebarStatusLabel.backgroundColor = [NSColor clearColor];
     [statusPill addSubview:self.sidebarStatusLabel];
 
-    // Navigation Items (Floating Liquid Glass Pills)
+    // Navigation Items (Floating Liquid Glass Pills - 5 Core Modules)
     NSArray *navItems = @[
         @{@"icon": @"📞", @"title": @"Aramalar & Tuş Takımı"},
         @{@"icon": @"🔔", @"title": @"Bildirimler"},
-        @{@"icon": @"🎵", @"title": @"Şimdi Çalıyor"},
         @{@"icon": @"📋", @"title": @"Cihaz & Pano"},
         @{@"icon": @"🖥️", @"title": @"Ekran Yansıtma"},
         @{@"icon": @"⚙️", @"title": @"Ayarlar"}
     ];
 
-    CGFloat btnY = 132;
+    CGFloat btnY = 136;
     for (NSInteger i = 0; i < navItems.count; i++) {
         NSDictionary *item = navItems[i];
-        NSButton *btn = [[NSButton alloc] initWithFrame:NSMakeRect(12, btnY, w - 24, 38)];
+        NSButton *btn = [[NSButton alloc] initWithFrame:NSMakeRect(12, btnY, w - 24, 40)];
         btn.title = [NSString stringWithFormat:@"%@  %@", item[@"icon"], item[@"title"]];
         btn.bezelStyle = NSBezelStyleRegularSquare;
         btn.wantsLayer = YES;
@@ -574,7 +562,7 @@ static NSString *MCFindScrcpyPath(void) {
         [self.sidebarContentView addSubview:btn];
         [self.navButtons addObject:btn];
 
-        btnY += 44;
+        btnY += 46;
     }
 
     // Sidebar Footer: Battery & Connection Glass Card
@@ -626,7 +614,6 @@ static NSString *MCFindScrcpyPath(void) {
 
     [self.callsView removeFromSuperview];
     [self.notificationsView removeFromSuperview];
-    [self.mediaView removeFromSuperview];
     [self.deviceView removeFromSuperview];
     [self.mirrorView removeFromSuperview];
     [self.settingsView removeFromSuperview];
@@ -635,10 +622,9 @@ static NSString *MCFindScrcpyPath(void) {
     switch (index) {
         case 0: target = self.callsView; break;
         case 1: target = self.notificationsView; break;
-        case 2: target = self.mediaView; break;
-        case 3: target = self.deviceView; break;
-        case 4: target = self.mirrorView; break;
-        case 5: target = self.settingsView; break;
+        case 2: target = self.deviceView; break;
+        case 3: target = self.mirrorView; break;
+        case 4: target = self.settingsView; break;
     }
 
     if (target) {
@@ -651,7 +637,6 @@ static NSString *MCFindScrcpyPath(void) {
 - (void)layoutAllViews {
     if (self.callsView.superview) self.callsView.frame = self.contentContainerView.bounds;
     if (self.notificationsView.superview) self.notificationsView.frame = self.contentContainerView.bounds;
-    if (self.mediaView.superview) self.mediaView.frame = self.contentContainerView.bounds;
     if (self.deviceView.superview) self.deviceView.frame = self.contentContainerView.bounds;
     if (self.mirrorView.superview) self.mirrorView.frame = self.contentContainerView.bounds;
     if (self.settingsView.superview) self.settingsView.frame = self.contentContainerView.bounds;
@@ -699,7 +684,8 @@ static NSString *MCFindScrcpyPath(void) {
     [avatarCircle addSubview:self.callHeroAvatarImageView];
 
     // Name & Subtitle
-    self.callHeroTitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(82, 16, self.callHeroCard.bounds.size.width - 520, 26)];
+    CGFloat titleW = self.callHeroCard.bounds.size.width - 82 - 280;
+    self.callHeroTitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(82, 18, titleW, 26)];
     self.callHeroTitleLabel.autoresizingMask = NSViewWidthSizable;
     self.callHeroTitleLabel.stringValue = @"Aktif Arama Yok";
     self.callHeroTitleLabel.font = [NSFont systemFontOfSize:17 weight:NSFontWeightBold];
@@ -709,7 +695,7 @@ static NSString *MCFindScrcpyPath(void) {
     self.callHeroTitleLabel.backgroundColor = [NSColor clearColor];
     [self.callHeroCard addSubview:self.callHeroTitleLabel];
 
-    self.callHeroSubtitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(82, 44, self.callHeroCard.bounds.size.width - 100, 38)];
+    self.callHeroSubtitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(82, 46, titleW, 32)];
     self.callHeroSubtitleLabel.autoresizingMask = NSViewWidthSizable;
     self.callHeroSubtitleLabel.stringValue = @"Tuş takımından numara arayabilir veya gelen aramaları masanızdan yanıtlayabilirsiniz.";
     self.callHeroSubtitleLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
@@ -721,24 +707,19 @@ static NSString *MCFindScrcpyPath(void) {
     self.callHeroSubtitleLabel.cell.scrollable = NO;
     [self.callHeroCard addSubview:self.callHeroSubtitleLabel];
 
-    // Call Action Buttons (Right-aligned inside Hero Card)
-    self.callHeroButtonStack = [[NSStackView alloc] initWithFrame:NSMakeRect(self.callHeroCard.bounds.size.width - 450, 28, 430, 34)];
+    // Call Action Buttons (Right-aligned inside Hero Card, clean 2-button layout)
+    self.callHeroButtonStack = [[NSStackView alloc] initWithFrame:NSMakeRect(self.callHeroCard.bounds.size.width - 270, 26, 250, 38)];
     self.callHeroButtonStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
-    self.callHeroButtonStack.spacing = 8;
+    self.callHeroButtonStack.spacing = 12;
     self.callHeroButtonStack.distribution = NSStackViewDistributionFillEqually;
+    self.callHeroButtonStack.alignment = NSLayoutAttributeCenterY;
     self.callHeroButtonStack.autoresizingMask = NSViewMinXMargin;
     [self.callHeroCard addSubview:self.callHeroButtonStack];
 
-    self.btnAnswerCall = [MCGlassButton pillButtonWithTitle:@"📞 Cevapla" bgAlpha:0.25 tintColor:[NSColor systemGreenColor] target:self action:@selector(actionAnswerClicked:)];
+    self.btnAnswerCall = [MCGlassButton pillButtonWithTitle:@"📞 Cevapla" bgAlpha:0.35 tintColor:[NSColor colorWithCalibratedRed:0.18 green:0.80 blue:0.44 alpha:1.0] target:self action:@selector(actionAnswerClicked:)];
     [self.callHeroButtonStack addArrangedSubview:self.btnAnswerCall];
 
-    self.btnAnswerSpeakerCall = [MCGlassButton pillButtonWithTitle:@"🔊 Hoparlör" bgAlpha:0.25 tintColor:[NSColor systemBlueColor] target:self action:@selector(actionAnswerSpeakerClicked:)];
-    [self.callHeroButtonStack addArrangedSubview:self.btnAnswerSpeakerCall];
-
-    self.btnTransferComputerCall = [MCGlassButton pillButtonWithTitle:@"💻 Bilgisayara Al" bgAlpha:0.25 tintColor:[NSColor systemPurpleColor] target:self action:@selector(actionTransferComputerClicked:)];
-    [self.callHeroButtonStack addArrangedSubview:self.btnTransferComputerCall];
-
-    self.btnRejectCall = [MCGlassButton pillButtonWithTitle:@"❌ Reddet" bgAlpha:0.25 tintColor:[NSColor systemRedColor] target:self action:@selector(actionRejectClicked:)];
+    self.btnRejectCall = [MCGlassButton pillButtonWithTitle:@"❌ Reddet" bgAlpha:0.35 tintColor:[NSColor colorWithCalibratedRed:0.95 green:0.25 blue:0.25 alpha:1.0] target:self action:@selector(actionRejectClicked:)];
     [self.callHeroButtonStack addArrangedSubview:self.btnRejectCall];
 
     self.callHeroButtonStack.hidden = YES;
@@ -893,97 +874,7 @@ static NSString *MCFindScrcpyPath(void) {
     [self rebuildNotificationsStack];
 }
 
-#pragma mark - Tab 3: 🎵 Şimdi Çalıyor (Liquid Glass Control Center Music Widget)
-
-- (void)buildMediaTab {
-    self.mediaView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
-    CGFloat pad = 24;
-
-    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 300, 28)];
-    tabTitle.stringValue = @"Şimdi Çalıyor (Medya)";
-    tabTitle.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
-    tabTitle.textColor = [NSColor whiteColor];
-    tabTitle.editable = NO;
-    tabTitle.bordered = NO;
-    tabTitle.backgroundColor = [NSColor clearColor];
-    [self.mediaView addSubview:tabTitle];
-
-    CGFloat cardW = self.mediaView.bounds.size.width - (pad * 2);
-    CGFloat cardH = 220;
-    self.mediaHeroCard = [[MCGlassCardView alloc] initWithFrame:NSMakeRect(pad, 92, cardW, cardH)];
-    self.mediaHeroCard.autoresizingMask = NSViewWidthSizable;
-    [self.mediaView addSubview:self.mediaHeroCard];
-
-    // Glowing Vinyl / Album Art Box
-    NSBox *artBox = [[NSBox alloc] initWithFrame:NSMakeRect(28, 30, 100, 100)];
-    artBox.boxType = NSBoxCustom;
-    artBox.cornerRadius = 16;
-    artBox.borderWidth = 1.0;
-    artBox.borderColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.25];
-    artBox.fillColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.12];
-    [self.mediaHeroCard addSubview:artBox];
-
-    NSTextField *artIcon = [[NSTextField alloc] initWithFrame:artBox.bounds];
-    artIcon.stringValue = @"🎵";
-    artIcon.font = [NSFont systemFontOfSize:46];
-    artIcon.alignment = NSTextAlignmentCenter;
-    artIcon.editable = NO;
-    artIcon.bordered = NO;
-    artIcon.backgroundColor = [NSColor clearColor];
-    [artBox addSubview:artIcon];
-
-    self.mediaAppBadgeLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(148, 26, 250, 20)];
-    self.mediaAppBadgeLabel.stringValue = @"Spotify / Deezer";
-    self.mediaAppBadgeLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightBold];
-    self.mediaAppBadgeLabel.textColor = [NSColor systemGreenColor];
-    self.mediaAppBadgeLabel.editable = NO;
-    self.mediaAppBadgeLabel.bordered = NO;
-    self.mediaAppBadgeLabel.backgroundColor = [NSColor clearColor];
-    [self.mediaHeroCard addSubview:self.mediaAppBadgeLabel];
-
-    self.mediaTitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(148, 54, cardW - 170, 34)];
-    self.mediaTitleLabel.stringValue = @"Şu anda çalan müzik yok";
-    self.mediaTitleLabel.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
-    self.mediaTitleLabel.textColor = [NSColor whiteColor];
-    self.mediaTitleLabel.editable = NO;
-    self.mediaTitleLabel.bordered = NO;
-    self.mediaTitleLabel.backgroundColor = [NSColor clearColor];
-    [self.mediaHeroCard addSubview:self.mediaTitleLabel];
-
-    self.mediaArtistLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(148, 92, cardW - 170, 22)];
-    self.mediaArtistLabel.stringValue = @"Telefonda Spotify veya Deezer açtığınızda parça bilgisi burada belirecektir.";
-    self.mediaArtistLabel.font = [NSFont systemFontOfSize:14 weight:NSFontWeightMedium];
-    self.mediaArtistLabel.textColor = [NSColor colorWithCalibratedWhite:0.7 alpha:1.0];
-    self.mediaArtistLabel.editable = NO;
-    self.mediaArtistLabel.bordered = NO;
-    self.mediaArtistLabel.backgroundColor = [NSColor clearColor];
-    [self.mediaHeroCard addSubview:self.mediaArtistLabel];
-
-    self.mediaStatusBadge = [[NSTextField alloc] initWithFrame:NSMakeRect(148, 148, 130, 24)];
-    self.mediaStatusBadge.stringValue = @"▶ Oynatılıyor";
-    self.mediaStatusBadge.font = [NSFont systemFontOfSize:12 weight:NSFontWeightBold];
-    self.mediaStatusBadge.textColor = [NSColor systemGreenColor];
-    self.mediaStatusBadge.editable = NO;
-    self.mediaStatusBadge.bordered = NO;
-    self.mediaStatusBadge.backgroundColor = [NSColor clearColor];
-    [self.mediaHeroCard addSubview:self.mediaStatusBadge];
-
-    // Info Glass Card
-    MCGlassCardView *infoCard = [[MCGlassCardView alloc] initWithFrame:NSMakeRect(pad, 332, cardW, 84)];
-    infoCard.autoresizingMask = NSViewWidthSizable;
-    [self.mediaView addSubview:infoCard];
-
-    NSTextField *infoNote = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 14, cardW - 40, 56)];
-    infoNote.stringValue = @"💡 Akıllı Medya Bildirim Filtresi:\nSpotify, Deezer ve YouTube Music gibi uygulamaların sürekli değişen şarkı bildirimleri Mac masaüstünüzü spamlamaz. Parça geçişleri sessizce bu ekranda toplanır.";
-    infoNote.font = [NSFont systemFontOfSize:13 weight:NSFontWeightRegular];
-    infoNote.textColor = [NSColor colorWithCalibratedWhite:0.75 alpha:1.0];
-    infoNote.editable = NO;
-    infoNote.bordered = NO;
-    infoNote.backgroundColor = [NSColor clearColor];
-    [infoCard addSubview:infoNote];
-}
-
-#pragma mark - Tab 4: 📋 Cihaz & Pano
+#pragma mark - Tab 3: 📋 Cihaz & Pano
 
 - (void)buildDeviceTab {
     self.deviceView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
@@ -1114,7 +1005,7 @@ static NSString *MCFindScrcpyPath(void) {
     [sendCard addSubview:btnSendClip];
 }
 
-#pragma mark - Tab 5: 🖥️ Ekran Yansıtma (Screen Mirroring)
+#pragma mark - Tab 4: 🖥️ Ekran Yansıtma (Screen Mirroring)
 
 - (void)buildScreenMirroringTab {
     self.mirrorView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
@@ -1422,20 +1313,19 @@ static NSString *MCFindScrcpyPath(void) {
 #pragma mark - Call Actions
 
 - (void)actionAnswerClicked:(id)sender {
-    [[BluetoothBridge sharedBridge] sendCallAction:@"answer"];
-    self.callHeroTitleLabel.stringValue = @"Görüşme Açıldı (Telefonda)";
-}
-
-- (void)actionAnswerSpeakerClicked:(id)sender {
     [[BluetoothBridge sharedBridge] sendCallAction:@"answer_speaker"];
-    self.callHeroTitleLabel.stringValue = @"🔊 Hoparlör Açık (Eller Serbest)";
-    self.callHeroSubtitleLabel.stringValue = @"Telefon hoparlörü devrede. Masadan konuşabilirsiniz.";
-}
-
-- (void)actionTransferComputerClicked:(id)sender {
-    [[BluetoothBridge sharedBridge] sendCallAction:@"transfer_computer"];
-    self.callHeroTitleLabel.stringValue = @"💻 Bilgisayar Masası Modunda";
-    self.callHeroSubtitleLabel.stringValue = @"Telefon eller serbest iletişim moduna alındı. Görüşmeyi masanızdan sürdürebilirsiniz.";
+    self.callHeroCard.glassFillColor = [NSColor colorWithCalibratedRed:0.10 green:0.35 blue:0.18 alpha:0.4];
+    self.callHeroCard.glassStrokeColor = [NSColor colorWithCalibratedRed:0.18 green:0.80 blue:0.44 alpha:0.6];
+    if (@available(macOS 11.0, *)) {
+        NSImageSymbolConfiguration *cfg = [NSImageSymbolConfiguration configurationWithPointSize:20 weight:NSFontWeightMedium];
+        self.callHeroAvatarImageView.image = [[NSImage imageWithSystemSymbolName:@"phone.fill" accessibilityDescription:nil] imageWithSymbolConfiguration:cfg];
+        self.callHeroAvatarImageView.contentTintColor = [NSColor colorWithCalibratedRed:0.25 green:0.90 blue:0.45 alpha:1.0];
+    }
+    self.callHeroTitleLabel.stringValue = @"Görüşme Devam Ediyor";
+    self.callHeroSubtitleLabel.stringValue = @"Telefon eller serbest (hoparlör) modunda. Masanızdan konuşabilirsiniz.";
+    self.btnAnswerCall.hidden = YES;
+    self.btnRejectCall.title = @"❌ Görüşmeyi Bitir";
+    self.btnRejectCall.hidden = NO;
 }
 
 - (void)actionRejectClicked:(id)sender {
@@ -1503,8 +1393,7 @@ static NSString *MCFindScrcpyPath(void) {
     self.callHeroSubtitleLabel.stringValue = @"Arama komutu telefona iletildi. Telefonunuz aramayı başlatıyor...";
     self.callHeroButtonStack.hidden = NO;
     self.btnAnswerCall.hidden = YES;
-    self.btnAnswerSpeakerCall.hidden = YES;
-    self.btnTransferComputerCall.hidden = YES;
+    self.btnRejectCall.title = @"❌ Aramayı Kapat";
     self.btnRejectCall.hidden = NO;
 }
 
@@ -1598,9 +1487,9 @@ static NSString *MCFindScrcpyPath(void) {
 
         self.callHeroButtonStack.hidden = NO;
         self.btnAnswerCall.hidden = NO;
-        self.btnAnswerSpeakerCall.hidden = NO;
-        self.btnTransferComputerCall.hidden = NO;
+        self.btnAnswerCall.title = @"📞 Cevapla";
         self.btnRejectCall.hidden = NO;
+        self.btnRejectCall.title = @"❌ Reddet";
 
         if (self.checkAutoRaiseOnCall.state == NSControlStateValueOn) {
             [self showWindowAndActivate];
@@ -1622,14 +1511,24 @@ static NSString *MCFindScrcpyPath(void) {
         self.callHeroTitleLabel.stringValue = @"Aktif Arama Yok";
         self.callHeroSubtitleLabel.stringValue = @"Tuş takımından numara arayabilir veya gelen aramaları masanızdan yanıtlayabilirsiniz.";
         self.callHeroButtonStack.hidden = YES;
+        self.btnAnswerCall.hidden = NO;
+        self.btnAnswerCall.title = @"📞 Cevapla";
+        self.btnRejectCall.title = @"❌ Reddet";
     });
 }
 
 - (void)updateCallStatus:(NSString *)status message:(NSString *)message {
     dispatch_async(dispatch_get_main_queue(), ^{
-        if ([@"on_computer" isEqualToString:status]) {
-            self.callHeroTitleLabel.stringValue = @"💻 Bilgisayar Masası Modunda";
-            self.callHeroSubtitleLabel.stringValue = message ?: @"Hoparlör ve eller serbest iletişim devrede.";
+        if ([@"on_computer" isEqualToString:status] || [@"speaker" isEqualToString:status]) {
+            self.callHeroTitleLabel.stringValue = @"🔊 Eller Serbest Modunda";
+            self.callHeroSubtitleLabel.stringValue = message ?: @"Hoparlör devrede. Masanızdan konuşabilirsiniz.";
+            self.callHeroButtonStack.hidden = NO;
+            self.btnAnswerCall.hidden = YES;
+            self.btnRejectCall.title = @"❌ Görüşmeyi Bitir";
+            self.btnRejectCall.hidden = NO;
+        } else if ([@"dialing" isEqualToString:status]) {
+            self.callHeroTitleLabel.stringValue = @"Arama Yapılıyor...";
+            self.callHeroSubtitleLabel.stringValue = message ?: @"Telefonda arama başlatıldı.";
         }
     });
 }
@@ -1996,18 +1895,6 @@ static NSString *MCFindScrcpyPath(void) {
     [self rebuildNotificationsStack];
 }
 
-- (void)updateMediaPlayback:(NSDictionary *)mediaInfo {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        NSString *app = mediaInfo[@"app_name"] ?: @"Müzik Çalar";
-        NSString *title = mediaInfo[@"title"] ?: @"";
-        NSString *artist = mediaInfo[@"artist"] ?: @"";
-
-        self.mediaAppBadgeLabel.stringValue = [NSString stringWithFormat:@"🎵 %@", app];
-        self.mediaTitleLabel.stringValue = title.length > 0 ? title : @"Parça Adı Yok";
-        self.mediaArtistLabel.stringValue = artist.length > 0 ? artist : @"Sanatçı Bilgisi Yok";
-        self.mediaStatusBadge.stringValue = @"▶ Oynatılıyor";
-    });
-}
 
 - (void)updateDeviceState:(MacConnectState)state name:(NSString *)name {
     dispatch_async(dispatch_get_main_queue(), ^{
