@@ -46,7 +46,19 @@
                                                                          intentIdentifiers:@[]
                                                                                    options:UNNotificationCategoryOptionCustomDismissAction];
 
-    NSSet *categories = [NSSet setWithObject:callCategory];
+    // Quick Reply Action for messaging notifications (WhatsApp, Telegram, SMS, etc.)
+    UNTextInputNotificationAction *replyAction = [UNTextInputNotificationAction actionWithIdentifier:@"ACTION_REPLY"
+                                                                                              title:@"💬 Yanıtla"
+                                                                                            options:UNNotificationActionOptionNone
+                                                                               textInputButtonTitle:@"Gönder"
+                                                                               textInputPlaceholder:@"Mesajınızı yazın..."];
+
+    UNNotificationCategory *msgCategory = [UNNotificationCategory categoryWithIdentifier:@"MC_MESSAGE_NOTIFICATION"
+                                                                                  actions:@[replyAction]
+                                                                        intentIdentifiers:@[]
+                                                                                  options:UNNotificationCategoryOptionNone];
+
+    NSSet *categories = [NSSet setWithObjects:callCategory, msgCategory, nil];
     [center setNotificationCategories:categories];
     
     [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge)
@@ -78,6 +90,16 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     } else if ([@"ACTION_REJECT" isEqualToString:actionId]) {
         [[BluetoothBridge sharedBridge] sendCallAction:@"reject"];
         [self dismissIncomingCall];
+    } else if ([@"ACTION_REPLY" isEqualToString:actionId]) {
+        if ([response isKindOfClass:[UNTextInputNotificationResponse class]]) {
+            UNTextInputNotificationResponse *textResp = (UNTextInputNotificationResponse *)response;
+            NSString *userText = textResp.userText;
+            NSString *notifId = response.notification.request.content.userInfo[@"id"];
+            if (notifId && userText.length > 0) {
+                [[BluetoothBridge sharedBridge] replyToNotificationWithId:notifId text:userText];
+                NSLog(@"[NotificationPresenter] Quick reply sent via banner: [%@] %@", notifId, userText);
+            }
+        }
     }
     completionHandler();
 }
@@ -143,7 +165,7 @@ static NSString *MCResolvePrettyAppName(NSString *rawAppName, NSString *packageN
                                   body:(NSString *)body
                                subText:(NSString *)subText
                                  sound:(BOOL)playSound {
-    [self presentNotificationWithAppName:appName title:title body:body subText:subText iconBase64:nil packageName:nil sound:playSound];
+    [self presentNotificationWithAppName:appName title:title body:body subText:subText iconBase64:nil packageName:nil notificationId:nil canReply:NO sound:playSound];
 }
 
 - (void)presentNotificationWithAppName:(NSString *)appName
@@ -152,6 +174,18 @@ static NSString *MCResolvePrettyAppName(NSString *rawAppName, NSString *packageN
                                subText:(NSString *)subText
                             iconBase64:(NSString *)iconBase64
                            packageName:(NSString *)packageName
+                                 sound:(BOOL)playSound {
+    [self presentNotificationWithAppName:appName title:title body:body subText:subText iconBase64:iconBase64 packageName:packageName notificationId:nil canReply:NO sound:playSound];
+}
+
+- (void)presentNotificationWithAppName:(NSString *)appName
+                                 title:(NSString *)title
+                                  body:(NSString *)body
+                               subText:(NSString *)subText
+                            iconBase64:(NSString *)iconBase64
+                           packageName:(NSString *)packageName
+                        notificationId:(NSString *)notifId
+                              canReply:(BOOL)canReply
                                  sound:(BOOL)playSound {
     dispatch_async(dispatch_get_main_queue(), ^{
         NSString *displayTitle = MCResolvePrettyAppName(appName, packageName);
@@ -176,6 +210,12 @@ static NSString *MCResolvePrettyAppName(NSString *rawAppName, NSString *packageN
         content.body = displayBody;
         if (playSound) {
             content.sound = [UNNotificationSound defaultSound];
+        }
+
+        // Configure inline reply category if notification supports direct reply
+        if (canReply && notifId && notifId.length > 0) {
+            content.categoryIdentifier = @"MC_MESSAGE_NOTIFICATION";
+            content.userInfo = @{@"id": notifId};
         }
 
         // Attach application icon if provided

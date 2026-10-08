@@ -7,6 +7,10 @@
     NSMutableData *_incomingBuffer;
     NSTimer *_connectingTimeoutTimer;
     NSTimer *_autoConnectTimer;
+    NSTimer *_pasteboardWatcherTimer;
+    NSInteger _lastPasteboardChangeCount;
+    NSString *_lastSentClipboardText;
+    NSString *_lastReceivedClipboardText;
     BOOL _isQueryingSDP;
 }
 
@@ -14,6 +18,8 @@
 @property (nonatomic, readwrite, copy) NSString *connectedDeviceName;
 @property (nonatomic, readwrite, copy) NSString *connectedDeviceAddress;
 @property (nonatomic, readwrite) NSInteger batteryLevel;
+@property (nonatomic, readwrite, copy) NSString *deviceIpAddress;
+@property (nonatomic, readwrite, copy) NSString *lastSyncedClipboardText;
 @property (nonatomic, copy) NSString *lastTargetAddress;
 @property (nonatomic, strong) NSMutableData *fileReceiveBuffer;
 @property (nonatomic, copy) NSString *fileReceiveName;
@@ -26,6 +32,7 @@
 - (void)sendData:(NSData *)data;
 - (void)resetToDisconnected;
 - (void)processIncomingPacket:(NSData *)lineData;
+- (void)checkPasteboardChange:(NSTimer *)timer;
 
 @end
 
@@ -71,6 +78,16 @@
                                                             repeats:YES];
     }
 
+    // Start automatic Universal Clipboard watcher (every 0.5s)
+    if (!_pasteboardWatcherTimer) {
+        _lastPasteboardChangeCount = [NSPasteboard generalPasteboard].changeCount;
+        _pasteboardWatcherTimer = [NSTimer scheduledTimerWithTimeInterval:0.5
+                                                                   target:self
+                                                                 selector:@selector(checkPasteboardChange:)
+                                                                 userInfo:nil
+                                                                  repeats:YES];
+    }
+
     [self connectToPairedPhone];
 }
 
@@ -84,9 +101,32 @@
         [_connectingTimeoutTimer invalidate];
         _connectingTimeoutTimer = nil;
     }
+    if (_pasteboardWatcherTimer) {
+        [_pasteboardWatcherTimer invalidate];
+        _pasteboardWatcherTimer = nil;
+    }
     if (_channelNotificationGeneral) {
         [_channelNotificationGeneral unregister];
         _channelNotificationGeneral = nil;
+    }
+}
+
+- (void)checkPasteboardChange:(NSTimer *)timer {
+    if (self.state != MacConnectStateConnected) return;
+
+    NSPasteboard *pb = [NSPasteboard generalPasteboard];
+    if (pb.changeCount != _lastPasteboardChangeCount) {
+        _lastPasteboardChangeCount = pb.changeCount;
+        NSString *current = [pb stringForType:NSPasteboardTypeString];
+        if (current && current.length > 0) {
+            if (![current isEqualToString:_lastReceivedClipboardText] &&
+                ![current isEqualToString:_lastSentClipboardText]) {
+                _lastSentClipboardText = current;
+                self.lastSyncedClipboardText = current;
+                [self sendClipboardText:current];
+                [self log:[NSString stringWithFormat:@"📋 Otomatik Pano: Mac panosu telefona aktarıldı (%lu karakter)", (unsigned long)current.length]];
+            }
+        }
     }
 }
 
@@ -450,6 +490,10 @@
         if (deviceName && deviceName.length > 0) {
             self.connectedDeviceName = deviceName;
         }
+        NSString *localIp = json[@"local_ip"];
+        if (localIp && localIp.length > 0) {
+            self.deviceIpAddress = localIp;
+        }
         id battery = json[@"battery"];
         if (battery && [battery isKindOfClass:[NSNumber class]]) {
             self.batteryLevel = [battery integerValue];
@@ -457,7 +501,7 @@
                 [self.delegate bridge:self didUpdateBattery:self.batteryLevel];
             }
         }
-        [self log:[NSString stringWithFormat:@"Phone linked: %@ (Battery: %ld%%)", self.connectedDeviceName, (long)self.batteryLevel]];
+        [self log:[NSString stringWithFormat:@"Phone linked: %@ (Battery: %ld%%, IP: %@)", self.connectedDeviceName, (long)self.batteryLevel, self.deviceIpAddress ?: @"--"]];
         [self notifyStateChanged];
         [self sendHandshakeAck];
     } else if ([@"ping" isEqualToString:type]) {
@@ -480,17 +524,30 @@
     } else if ([@"clipboard_text" isEqualToString:type]) {
         NSString *text = json[@"text"];
         if (text && [text isKindOfClass:[NSString class]] && text.length > 0) {
+            _lastReceivedClipboardText = text;
+            self.lastSyncedClipboardText = text;
             dispatch_async(dispatch_get_main_queue(), ^{
                 NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
                 [pasteboard clearContents];
                 [pasteboard setString:text forType:NSPasteboardTypeString];
+                self->_lastPasteboardChangeCount = pasteboard.changeCount;
 
                 if ([self.delegate respondsToSelector:@selector(bridge:didReceiveClipboardText:)]) {
                     [self.delegate bridge:self didReceiveClipboardText:text];
                 }
             });
-            [self log:[NSString stringWithFormat:@"Copied text from phone to Mac clipboard (%lu chars)", (unsigned long)text.length]];
+            [self log:[NSString stringWithFormat:@"📋 Otomatik Pano: Telefonda kopyalanan metin Mac panosuna aktarıldı (%lu karakter)", (unsigned long)text.length]];
         }
+    } else if ([@"reply_status" isEqualToString:type]) {
+        BOOL success = [json[@"success"] boolValue];
+        NSString *notifId = json[@"id"] ?: @"";
+        NSString *msg = json[@"message"] ?: @"";
+        [self log:[NSString stringWithFormat:@"Bildirim yanıt durumu: %@ (%@)", success ? @"Başarılı" : @"Başarısız", msg]];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if ([self.delegate respondsToSelector:@selector(bridge:didUpdateReplyStatus:notifId:message:)]) {
+                [self.delegate bridge:self didUpdateReplyStatus:success notifId:notifId message:msg];
+            }
+        });
     } else if ([@"incoming_call" isEqualToString:type]) {
         [self log:[NSString stringWithFormat:@"Incoming call: %@ (%@)", json[@"name"], json[@"number"]]];
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -596,6 +653,22 @@
         NSMutableData *line = [NSMutableData dataWithData:data];
         [line appendBytes:"\n" length:1];
         [self sendData:line];
+    }
+}
+
+- (void)replyToNotificationWithId:(NSString *)notifId text:(NSString *)text {
+    if (!notifId || notifId.length == 0 || !text || text.length == 0) return;
+    NSDictionary *cmd = @{
+        @"type": @"reply_notification",
+        @"id": notifId,
+        @"text": text
+    };
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:cmd options:0 error:nil];
+    if (jsonData) {
+        NSMutableData *line = [NSMutableData dataWithData:jsonData];
+        [line appendBytes:"\n" length:1];
+        [self sendData:line];
+        [self log:[NSString stringWithFormat:@"Bildirime doğrudan yanıt gönderildi [%@]: %@", notifId, text]];
     }
 }
 

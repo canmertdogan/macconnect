@@ -14,5 +14,7 @@
 - (void)dismissIncomingCall;
 - (void)updateCallStatus:(NSString *)status message:(NSString *)message;
 - (void)updateClipboardText:(NSString *)text;
+- (void)updateDeviceIpAddress:(NSString *)ipAddress;
+- (void)updateReplyStatus:(BOOL)success notifId:(NSString *)notifId message:(NSString *)message;
 
 @end

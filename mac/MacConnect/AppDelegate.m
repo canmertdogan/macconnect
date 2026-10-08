@@ -275,6 +275,9 @@
 
 - (void)bridge:(BluetoothBridge *)bridge didChangeState:(MacConnectState)state deviceName:(NSString *)deviceName {
     [[MainWindowController sharedController] updateDeviceState:state name:deviceName];
+    if (state == MacConnectStateConnected && bridge.deviceIpAddress.length > 0) {
+        [[MainWindowController sharedController] updateDeviceIpAddress:bridge.deviceIpAddress];
+    }
 
     if (state == MacConnectStateConnected) {
         if (!self.activeIncomingCall) {
@@ -320,13 +323,17 @@
         return;
     }
 
-    // Deliver native macOS notification banner with app icon
+    // Deliver native macOS notification banner with app icon and interactive quick reply
+    NSString *notifId = notification[@"id"];
+    BOOL canReply = [notification[@"can_reply"] boolValue];
     [[NotificationPresenter sharedPresenter] presentNotificationWithAppName:appName
                                                                       title:title
                                                                        body:text
                                                                     subText:subText
                                                                  iconBase64:icon
                                                                 packageName:pkg
+                                                             notificationId:notifId
+                                                                   canReply:canReply
                                                                       sound:YES];
 
     // Record in recent list
@@ -406,6 +413,10 @@
 
 - (void)bridge:(BluetoothBridge *)bridge didUpdateCallStatus:(NSString *)status message:(NSString *)message {
     [[MainWindowController sharedController] updateCallStatus:status message:message];
+}
+
+- (void)bridge:(BluetoothBridge *)bridge didUpdateReplyStatus:(BOOL)success notifId:(NSString *)notifId message:(NSString *)message {
+    [[MainWindowController sharedController] updateReplyStatus:success notifId:notifId message:message];
 }
 
 @end

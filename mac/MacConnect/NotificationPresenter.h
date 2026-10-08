@@ -21,6 +21,16 @@
                            packageName:(NSString *)packageName
                                  sound:(BOOL)playSound;
 
+- (void)presentNotificationWithAppName:(NSString *)appName
+                                 title:(NSString *)title
+                                  body:(NSString *)body
+                               subText:(NSString *)subText
+                            iconBase64:(NSString *)iconBase64
+                           packageName:(NSString *)packageName
+                        notificationId:(NSString *)notifId
+                              canReply:(BOOL)canReply
+                                 sound:(BOOL)playSound;
+
 - (void)presentIncomingCallWithName:(NSString *)name
                              number:(NSString *)number
                             appName:(NSString *)appName;

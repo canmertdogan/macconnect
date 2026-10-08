@@ -7,6 +7,8 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.app.RemoteInput;
+import android.content.Intent;
 import android.os.Bundle;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
@@ -21,6 +23,17 @@ public class NotificationListener extends NotificationListenerService {
     private static final String TAG = "MacConnectNotif";
     private static NotificationListener sInstance;
 
+    public static class ReplyActionHolder {
+        public final Notification.Action action;
+        public final RemoteInput[] remoteInputs;
+
+        public ReplyActionHolder(Notification.Action action, RemoteInput[] remoteInputs) {
+            this.action = action;
+            this.remoteInputs = remoteInputs;
+        }
+    }
+
+    private static final Map<String, ReplyActionHolder> sReplyHolders = new HashMap<>();
     private static final Map<String, String> sNameCache = new HashMap<>();
     private static final Map<String, String> sIconCache = new HashMap<>();
 
@@ -94,17 +107,26 @@ public class NotificationListener extends NotificationListenerService {
 
         // VoIP / Call Detection (WhatsApp, Telegram, etc.)
         boolean isCallCategory = Notification.CATEGORY_CALL.equals(notification.category);
+        // Direct reply detection (WhatsApp, Telegram, SMS, Signal, etc.)
+        boolean canReply = false;
         Notification.Action answerAction = null;
         Notification.Action declineAction = null;
 
         if (notification.actions != null) {
             for (Notification.Action act : notification.actions) {
-                if (act == null || act.title == null) continue;
-                String actTitle = act.title.toString().toLowerCase(java.util.Locale.ROOT);
-                if (actTitle.contains("cevapla") || actTitle.contains("yanıtla") || actTitle.contains("answer") || actTitle.contains("accept")) {
-                    answerAction = act;
-                } else if (actTitle.contains("reddet") || actTitle.contains("decline") || actTitle.contains("dismiss") || actTitle.contains("iptal") || actTitle.contains("asla")) {
-                    declineAction = act;
+                if (act == null) continue;
+                if (act.title != null) {
+                    String actTitle = act.title.toString().toLowerCase(java.util.Locale.ROOT);
+                    if (actTitle.contains("cevapla") || actTitle.contains("yanıtla") || actTitle.contains("answer") || actTitle.contains("accept")) {
+                        answerAction = act;
+                    } else if (actTitle.contains("reddet") || actTitle.contains("decline") || actTitle.contains("dismiss") || actTitle.contains("iptal") || actTitle.contains("asla")) {
+                        declineAction = act;
+                    }
+                }
+                RemoteInput[] ris = act.getRemoteInputs();
+                if (ris != null && ris.length > 0) {
+                    sReplyHolders.put(sbn.getKey(), new ReplyActionHolder(act, ris));
+                    canReply = true;
                 }
             }
         }
@@ -153,7 +175,8 @@ public class NotificationListener extends NotificationListenerService {
                     subText,
                     iconB64,
                     sbn.getPostTime(),
-                    isOngoing
+                    isOngoing,
+                    canReply
             );
         }
 
@@ -168,10 +191,35 @@ public class NotificationListener extends NotificationListenerService {
         if (sbn == null) return;
         if (getPackageName().equals(sbn.getPackageName())) return;
 
+        sReplyHolders.remove(sbn.getKey());
+
         BluetoothService btService = BluetoothService.getInstance();
         if (btService != null) {
             btService.unregisterVoipCall(sbn.getKey());
             btService.sendNotificationRemoved(sbn.getKey(), sbn.getPackageName());
+        }
+    }
+
+    public boolean replyToNotification(String key, String text) {
+        if (key == null || text == null || text.trim().isEmpty()) return false;
+        ReplyActionHolder holder = sReplyHolders.get(key);
+        if (holder == null || holder.action == null || holder.remoteInputs == null) {
+            Log.w(TAG, "No reply action holder found for notification key: " + key);
+            return false;
+        }
+        try {
+            Intent replyIntent = new Intent();
+            Bundle bundle = new Bundle();
+            for (RemoteInput ri : holder.remoteInputs) {
+                bundle.putCharSequence(ri.getResultKey(), text);
+            }
+            RemoteInput.addResultsToIntent(holder.remoteInputs, replyIntent, bundle);
+            holder.action.actionIntent.send(this, 0, replyIntent);
+            Log.d(TAG, "Direct reply sent successfully to " + key + ": " + text);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to send direct reply to notification: " + key, e);
+            return false;
         }
     }
 

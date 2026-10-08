@@ -273,6 +273,35 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
 
 @end
 
+static NSString *MCFindAdbPath(void) {
+    NSArray *candidates = @[
+        @"/opt/homebrew/bin/adb",
+        @"/usr/local/bin/adb",
+        [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Android/sdk/platform-tools/adb"],
+        @"/usr/bin/adb"
+    ];
+    for (NSString *p in candidates) {
+        if ([[NSFileManager defaultManager] isExecutableFileAtPath:p]) {
+            return p;
+        }
+    }
+    return @"adb";
+}
+
+static NSString *MCFindScrcpyPath(void) {
+    NSArray *candidates = @[
+        @"/opt/homebrew/bin/scrcpy",
+        @"/usr/local/bin/scrcpy",
+        [NSHomeDirectory() stringByAppendingPathComponent:@".local/bin/scrcpy"]
+    ];
+    for (NSString *p in candidates) {
+        if ([[NSFileManager defaultManager] isExecutableFileAtPath:p]) {
+            return p;
+        }
+    }
+    return nil;
+}
+
 @interface MainWindowController ()
 
 // Main Layout Views
@@ -299,7 +328,21 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
 @property (nonatomic, strong) MCFlippedView *notificationsView;
 @property (nonatomic, strong) MCFlippedView *mediaView;
 @property (nonatomic, strong) MCFlippedView *deviceView;
+@property (nonatomic, strong) MCFlippedView *mirrorView;
 @property (nonatomic, strong) MCFlippedView *settingsView;
+
+// Screen Mirroring Components
+@property (nonatomic, strong) NSTextField *mirrorStatusLabel;
+@property (nonatomic, strong) NSTextField *mirrorIpField;
+@property (nonatomic, strong) NSTextField *mirrorLogLabel;
+@property (nonatomic, strong) MCGlassButton *btnLaunchWirelessMirror;
+@property (nonatomic, strong) MCGlassButton *btnLaunchUsbMirror;
+@property (nonatomic, strong) MCGlassButton *btnAdbTcpip;
+@property (nonatomic, strong) MCGlassButton *btnInstallScrcpy;
+
+// Continuity Clipboard indicator in Device Tab
+@property (nonatomic, strong) NSTextField *clipboardSyncBadge;
+@property (nonatomic, strong) NSTextField *clipboardLastSyncTimeLabel;
 
 // Calls Tab Components
 @property (nonatomic, strong) MCGlassCardView *callHeroCard;
@@ -452,11 +495,12 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     self.contentContainerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     [self.contentEffectView addSubview:self.contentContainerView];
 
-    // 3. Build All 5 Liquid Glass Tab Views
+    // 3. Build All 6 Liquid Glass Tab Views
     [self buildCallsTab];
     [self buildNotificationsTab];
     [self buildMediaTab];
     [self buildDeviceTab];
+    [self buildScreenMirroringTab];
     [self buildSettingsTab];
 
     [self selectTab:0];
@@ -509,14 +553,15 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
         @{@"icon": @"📞", @"title": @"Aramalar & Tuş Takımı"},
         @{@"icon": @"🔔", @"title": @"Bildirimler"},
         @{@"icon": @"🎵", @"title": @"Şimdi Çalıyor"},
-        @{@"icon": @"📱", @"title": @"Cihaz & Pano"},
+        @{@"icon": @"📋", @"title": @"Cihaz & Pano"},
+        @{@"icon": @"🖥️", @"title": @"Ekran Yansıtma"},
         @{@"icon": @"⚙️", @"title": @"Ayarlar"}
     ];
 
-    CGFloat btnY = 136;
+    CGFloat btnY = 132;
     for (NSInteger i = 0; i < navItems.count; i++) {
         NSDictionary *item = navItems[i];
-        NSButton *btn = [[NSButton alloc] initWithFrame:NSMakeRect(12, btnY, w - 24, 40)];
+        NSButton *btn = [[NSButton alloc] initWithFrame:NSMakeRect(12, btnY, w - 24, 38)];
         btn.title = [NSString stringWithFormat:@"%@  %@", item[@"icon"], item[@"title"]];
         btn.bezelStyle = NSBezelStyleRegularSquare;
         btn.wantsLayer = YES;
@@ -529,7 +574,7 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
         [self.sidebarContentView addSubview:btn];
         [self.navButtons addObject:btn];
 
-        btnY += 46;
+        btnY += 44;
     }
 
     // Sidebar Footer: Battery & Connection Glass Card
@@ -583,6 +628,7 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     [self.notificationsView removeFromSuperview];
     [self.mediaView removeFromSuperview];
     [self.deviceView removeFromSuperview];
+    [self.mirrorView removeFromSuperview];
     [self.settingsView removeFromSuperview];
 
     NSView *target = nil;
@@ -591,7 +637,8 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
         case 1: target = self.notificationsView; break;
         case 2: target = self.mediaView; break;
         case 3: target = self.deviceView; break;
-        case 4: target = self.settingsView; break;
+        case 4: target = self.mirrorView; break;
+        case 5: target = self.settingsView; break;
     }
 
     if (target) {
@@ -606,6 +653,7 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     if (self.notificationsView.superview) self.notificationsView.frame = self.contentContainerView.bounds;
     if (self.mediaView.superview) self.mediaView.frame = self.contentContainerView.bounds;
     if (self.deviceView.superview) self.deviceView.frame = self.contentContainerView.bounds;
+    if (self.mirrorView.superview) self.mirrorView.frame = self.contentContainerView.bounds;
     if (self.settingsView.superview) self.settingsView.frame = self.contentContainerView.bounds;
     if (self.detailOverlayView) self.detailOverlayView.frame = self.contentContainerView.bounds;
 }
@@ -935,14 +983,14 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     [infoCard addSubview:infoNote];
 }
 
-#pragma mark - Tab 4: 📱 Cihaz & Pano
+#pragma mark - Tab 4: 📋 Cihaz & Pano
 
 - (void)buildDeviceTab {
     self.deviceView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
     CGFloat pad = 24;
 
-    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 350, 28)];
-    tabTitle.stringValue = @"Cihaz ve Pano Senkronizasyonu";
+    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 380, 28)];
+    tabTitle.stringValue = @"Cihaz & Evrensel Pano";
     tabTitle.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
     tabTitle.textColor = [NSColor whiteColor];
     tabTitle.editable = NO;
@@ -952,7 +1000,7 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
 
     CGFloat cardW = self.deviceView.bounds.size.width - (pad * 2);
 
-    // Hardware Card
+    // 1. Hardware Info Glass Card
     MCGlassCardView *infoCard = [[MCGlassCardView alloc] initWithFrame:NSMakeRect(pad, 92, cardW, 104)];
     infoCard.autoresizingMask = NSViewWidthSizable;
     [self.deviceView addSubview:infoCard];
@@ -984,13 +1032,65 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     self.deviceBatteryFullLabel.backgroundColor = [NSColor clearColor];
     [infoCard addSubview:self.deviceBatteryFullLabel];
 
-    // Send Clipboard Glass Card
-    MCGlassCardView *sendCard = [[MCGlassCardView alloc] initWithFrame:NSMakeRect(pad, 212, cardW, 160)];
+    // 2. Universal Continuity Clipboard Status Hero Card
+    MCGlassCardView *clipHeroCard = [[MCGlassCardView alloc] initWithFrame:NSMakeRect(pad, 208, cardW, 90)];
+    clipHeroCard.glassCornerRadius = 14;
+    clipHeroCard.glassFillColor = [NSColor colorWithCalibratedRed:0.0 green:0.45 blue:0.25 alpha:0.22];
+    clipHeroCard.glassStrokeColor = [NSColor colorWithCalibratedRed:0.2 green:0.8 blue:0.45 alpha:0.45];
+    clipHeroCard.autoresizingMask = NSViewWidthSizable;
+    [self.deviceView addSubview:clipHeroCard];
+
+    NSTextField *clipBadge = [[NSTextField alloc] initWithFrame:NSMakeRect(18, 14, cardW - 36, 22)];
+    clipBadge.stringValue = @"🟢 Çift Yönlü Otomatik Pano Aktif (Universal Continuity Clipboard)";
+    clipBadge.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
+    clipBadge.textColor = [NSColor colorWithCalibratedRed:0.4 green:0.95 blue:0.6 alpha:1.0];
+    clipBadge.editable = NO;
+    clipBadge.bordered = NO;
+    clipBadge.backgroundColor = [NSColor clearColor];
+    [clipHeroCard addSubview:clipBadge];
+
+    NSTextField *clipDesc = [[NSTextField alloc] initWithFrame:NSMakeRect(18, 38, cardW - 36, 44)];
+    clipDesc.stringValue = @"Mac'te Cmd+C ile kopyaladığınız her metin anında telefonun panosuna geçer.\nTelefonda kopyaladığınız her metin anında Mac panosuna aktarılır. Herhangi bir butona basmanız gerekmez.";
+    clipDesc.font = [NSFont systemFontOfSize:11.5 weight:NSFontWeightRegular];
+    clipDesc.textColor = [NSColor colorWithCalibratedWhite:0.85 alpha:1.0];
+    clipDesc.editable = NO;
+    clipDesc.bordered = NO;
+    clipDesc.backgroundColor = [NSColor clearColor];
+    [clipHeroCard addSubview:clipDesc];
+
+    // 3. Received Clipboard Glass Card
+    MCGlassCardView *recvCard = [[MCGlassCardView alloc] initWithFrame:NSMakeRect(pad, 310, cardW, 140)];
+    recvCard.autoresizingMask = NSViewWidthSizable;
+    [self.deviceView addSubview:recvCard];
+
+    NSTextField *recvTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(18, 12, cardW - 36, 20)];
+    recvTitle.stringValue = @"📋 Telefondan Otomatik Alınan Son Pano İçeriği";
+    recvTitle.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
+    recvTitle.textColor = [NSColor whiteColor];
+    recvTitle.editable = NO;
+    recvTitle.bordered = NO;
+    recvTitle.backgroundColor = [NSColor clearColor];
+    [recvCard addSubview:recvTitle];
+
+    NSScrollView *recvScroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(18, 36, cardW - 36, 90)];
+    recvScroll.hasVerticalScroller = YES;
+    recvScroll.drawsBackground = NO;
+    recvScroll.autoresizingMask = NSViewWidthSizable;
+    self.receivedClipboardTextView = [[NSTextView alloc] initWithFrame:recvScroll.bounds];
+    self.receivedClipboardTextView.editable = NO;
+    self.receivedClipboardTextView.font = [NSFont systemFontOfSize:13];
+    self.receivedClipboardTextView.textColor = [NSColor whiteColor];
+    self.receivedClipboardTextView.backgroundColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.04];
+    recvScroll.documentView = self.receivedClipboardTextView;
+    [recvCard addSubview:recvScroll];
+
+    // 4. Send Clipboard Glass Card (Manual Test / Send)
+    MCGlassCardView *sendCard = [[MCGlassCardView alloc] initWithFrame:NSMakeRect(pad, 462, cardW, 150)];
     sendCard.autoresizingMask = NSViewWidthSizable;
     [self.deviceView addSubview:sendCard];
 
     NSTextField *sendTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(18, 12, cardW - 36, 20)];
-    sendTitle.stringValue = @"Telefona Metin Gönder (Evrensel Pano)";
+    sendTitle.stringValue = @"Telefona Manuel Metin Gönder";
     sendTitle.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
     sendTitle.textColor = [NSColor whiteColor];
     sendTitle.editable = NO;
@@ -998,7 +1098,7 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     sendTitle.backgroundColor = [NSColor clearColor];
     [sendCard addSubview:sendTitle];
 
-    NSScrollView *sendScroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(18, 38, cardW - 36, 70)];
+    NSScrollView *sendScroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(18, 36, cardW - 36, 64)];
     sendScroll.hasVerticalScroller = YES;
     sendScroll.drawsBackground = NO;
     sendScroll.autoresizingMask = NSViewWidthSizable;
@@ -1010,34 +1110,260 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     [sendCard addSubview:sendScroll];
 
     NSButton *btnSendClip = [MCGlassButton pillButtonWithTitle:@"Telefona Gönder" bgAlpha:0.25 tintColor:[NSColor systemBlueColor] target:self action:@selector(sendClipboardClicked:)];
-    btnSendClip.frame = NSMakeRect(18, 118, 150, 30);
+    btnSendClip.frame = NSMakeRect(18, 108, 150, 30);
     [sendCard addSubview:btnSendClip];
+}
 
-    // Received Clipboard Glass Card
-    MCGlassCardView *recvCard = [[MCGlassCardView alloc] initWithFrame:NSMakeRect(pad, 388, cardW, 150)];
-    recvCard.autoresizingMask = NSViewWidthSizable;
-    [self.deviceView addSubview:recvCard];
+#pragma mark - Tab 5: 🖥️ Ekran Yansıtma (Screen Mirroring)
 
-    NSTextField *recvTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(18, 12, cardW - 36, 20)];
-    recvTitle.stringValue = @"Telefondan Alınan Son Pano İçeriği";
-    recvTitle.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
-    recvTitle.textColor = [NSColor whiteColor];
-    recvTitle.editable = NO;
-    recvTitle.bordered = NO;
-    recvTitle.backgroundColor = [NSColor clearColor];
-    [recvCard addSubview:recvTitle];
+- (void)buildScreenMirroringTab {
+    self.mirrorView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
+    CGFloat pad = 24;
 
-    NSScrollView *recvScroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(18, 38, cardW - 36, 96)];
-    recvScroll.hasVerticalScroller = YES;
-    recvScroll.drawsBackground = NO;
-    recvScroll.autoresizingMask = NSViewWidthSizable;
-    self.receivedClipboardTextView = [[NSTextView alloc] initWithFrame:recvScroll.bounds];
-    self.receivedClipboardTextView.editable = NO;
-    self.receivedClipboardTextView.font = [NSFont systemFontOfSize:13];
-    self.receivedClipboardTextView.textColor = [NSColor whiteColor];
-    self.receivedClipboardTextView.backgroundColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.04];
-    recvScroll.documentView = self.receivedClipboardTextView;
-    [recvCard addSubview:recvScroll];
+    NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 450, 28)];
+    tabTitle.stringValue = @"Ekran Yansıtma (Screen Mirroring)";
+    tabTitle.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
+    tabTitle.textColor = [NSColor whiteColor];
+    tabTitle.editable = NO;
+    tabTitle.bordered = NO;
+    tabTitle.backgroundColor = [NSColor clearColor];
+    [self.mirrorView addSubview:tabTitle];
+
+    CGFloat cardW = self.mirrorView.bounds.size.width - (pad * 2);
+
+    // Hero Info Card
+    MCGlassCardView *heroCard = [[MCGlassCardView alloc] initWithFrame:NSMakeRect(pad, 92, cardW, 116)];
+    heroCard.autoresizingMask = NSViewWidthSizable;
+    [self.mirrorView addSubview:heroCard];
+
+    NSImageView *screenIcon = [[NSImageView alloc] initWithFrame:NSMakeRect(20, 20, 48, 48)];
+    if (@available(macOS 11.0, *)) {
+        NSImageSymbolConfiguration *cfg = [NSImageSymbolConfiguration configurationWithPointSize:30 weight:NSFontWeightMedium];
+        screenIcon.image = [[NSImage imageWithSystemSymbolName:@"display" accessibilityDescription:nil] imageWithSymbolConfiguration:cfg];
+        screenIcon.contentTintColor = [NSColor colorWithCalibratedRed:0.2 green:0.75 blue:1.0 alpha:1.0];
+    }
+    [heroCard addSubview:screenIcon];
+
+    self.mirrorStatusLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(80, 18, cardW - 100, 24)];
+    self.mirrorStatusLabel.stringValue = @"Telefon Ekranını Mac'te Yönetin (Ultra Akıcı 60 FPS)";
+    self.mirrorStatusLabel.font = [NSFont systemFontOfSize:16 weight:NSFontWeightBold];
+    self.mirrorStatusLabel.textColor = [NSColor whiteColor];
+    self.mirrorStatusLabel.editable = NO;
+    self.mirrorStatusLabel.bordered = NO;
+    self.mirrorStatusLabel.backgroundColor = [NSColor clearColor];
+    [heroCard addSubview:self.mirrorStatusLabel];
+
+    NSTextField *subDesc = [[NSTextField alloc] initWithFrame:NSMakeRect(80, 44, cardW - 100, 38)];
+    subDesc.stringValue = @"Scrcpy ve ADB motoru ile telefonunuzun dokunmatik ekranını klavye & farenizle kontrol edin. Ses ve görüntü sıfır gecikmeyle aktarılır.";
+    subDesc.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
+    subDesc.textColor = [NSColor colorWithCalibratedWhite:0.8 alpha:1.0];
+    subDesc.editable = NO;
+    subDesc.bordered = NO;
+    subDesc.backgroundColor = [NSColor clearColor];
+    [heroCard addSubview:subDesc];
+
+    // Connection Control Card
+    MCGlassCardView *controlCard = [[MCGlassCardView alloc] initWithFrame:NSMakeRect(pad, 224, cardW, 230)];
+    controlCard.autoresizingMask = NSViewWidthSizable;
+    [self.mirrorView addSubview:controlCard];
+
+    NSTextField *cardHeader = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 14, cardW - 40, 20)];
+    cardHeader.stringValue = @"Yansıtma Yöntemi Seçin";
+    cardHeader.font = [NSFont systemFontOfSize:14 weight:NSFontWeightBold];
+    cardHeader.textColor = [NSColor whiteColor];
+    cardHeader.editable = NO;
+    cardHeader.bordered = NO;
+    cardHeader.backgroundColor = [NSColor clearColor];
+    [controlCard addSubview:cardHeader];
+
+    // IP Field
+    NSTextField *ipTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 46, 120, 20)];
+    ipTitle.stringValue = @"Telefon Wi-Fi IP:";
+    ipTitle.font = [NSFont systemFontOfSize:12 weight:NSFontWeightMedium];
+    ipTitle.textColor = [NSColor colorWithCalibratedWhite:0.7 alpha:1.0];
+    ipTitle.editable = NO;
+    ipTitle.bordered = NO;
+    ipTitle.backgroundColor = [NSColor clearColor];
+    [controlCard addSubview:ipTitle];
+
+    self.mirrorIpField = [[NSTextField alloc] initWithFrame:NSMakeRect(140, 44, 180, 24)];
+    self.mirrorIpField.placeholderString = @"192.168.1.xxx";
+    self.mirrorIpField.font = [NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightRegular];
+    self.mirrorIpField.stringValue = [BluetoothBridge sharedBridge].deviceIpAddress ?: @"";
+    [controlCard addSubview:self.mirrorIpField];
+
+    // Buttons
+    // 1. Wireless Mirror button
+    self.btnLaunchWirelessMirror = [MCGlassButton pillButtonWithTitle:@"🚀 Kablosuz Ekranı Başlat (Wi-Fi)" bgAlpha:0.35 tintColor:[NSColor colorWithCalibratedRed:0.18 green:0.80 blue:0.44 alpha:1.0] target:self action:@selector(launchWirelessMirrorClicked:)];
+    self.btnLaunchWirelessMirror.frame = NSMakeRect(20, 84, 250, 36);
+    [controlCard addSubview:self.btnLaunchWirelessMirror];
+
+    // 2. USB Mirror button
+    self.btnLaunchUsbMirror = [MCGlassButton pillButtonWithTitle:@"🔌 Kablolu USB Ekranı Başlat" bgAlpha:0.25 tintColor:[NSColor systemBlueColor] target:self action:@selector(launchUsbMirrorClicked:)];
+    self.btnLaunchUsbMirror.frame = NSMakeRect(280, 84, 210, 36);
+    [controlCard addSubview:self.btnLaunchUsbMirror];
+
+    // 3. ADB TCP/IP button
+    self.btnAdbTcpip = [MCGlassButton pillButtonWithTitle:@"📡 Kablosuz ADB Modunu Aç (Port 5555)" bgAlpha:0.18 tintColor:[NSColor systemOrangeColor] target:self action:@selector(enableAdbTcpipClicked:)];
+    self.btnAdbTcpip.frame = NSMakeRect(20, 130, 270, 32);
+    [controlCard addSubview:self.btnAdbTcpip];
+
+    // 4. Install / Check scrcpy button
+    self.btnInstallScrcpy = [MCGlassButton pillButtonWithTitle:@"⚙️ scrcpy Kur / Güncelle" bgAlpha:0.15 tintColor:[NSColor whiteColor] target:self action:@selector(installScrcpyClicked:)];
+    self.btnInstallScrcpy.frame = NSMakeRect(300, 130, 200, 32);
+    [controlCard addSubview:self.btnInstallScrcpy];
+
+    // Status / Console Label
+    self.mirrorLogLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 176, cardW - 40, 42)];
+    self.mirrorLogLabel.stringValue = MCFindScrcpyPath() ? [NSString stringWithFormat:@"✓ scrcpy kurulu: %@", MCFindScrcpyPath()] : @"⚠️ scrcpy bulunamadı. Kurulum için sağdaki butona tıklayın (brew install scrcpy).";
+    self.mirrorLogLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightRegular];
+    self.mirrorLogLabel.textColor = MCFindScrcpyPath() ? [NSColor colorWithCalibratedRed:0.4 green:0.9 blue:0.5 alpha:1.0] : [NSColor systemYellowColor];
+    self.mirrorLogLabel.editable = NO;
+    self.mirrorLogLabel.bordered = NO;
+    self.mirrorLogLabel.backgroundColor = [NSColor clearColor];
+    [controlCard addSubview:self.mirrorLogLabel];
+
+    // Instructions Card
+    MCGlassCardView *guideCard = [[MCGlassCardView alloc] initWithFrame:NSMakeRect(pad, 468, cardW, 140)];
+    guideCard.autoresizingMask = NSViewWidthSizable;
+    [self.mirrorView addSubview:guideCard];
+
+    NSTextField *guideTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 12, cardW - 40, 20)];
+    guideTitle.stringValue = @"Nasıl Kullanılır?";
+    guideTitle.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
+    guideTitle.textColor = [NSColor whiteColor];
+    guideTitle.editable = NO;
+    guideTitle.bordered = NO;
+    guideTitle.backgroundColor = [NSColor clearColor];
+    [guideCard addSubview:guideTitle];
+
+    NSTextField *guideText = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 36, cardW - 40, 94)];
+    guideText.stringValue = @"1. Telefonda 'Geliştirici Seçenekleri' -> 'USB Hata Ayıklama' açık olmalıdır.\n2. Kablosuz Yansıtma için: Telefonu bir kez USB ile bağlayıp 'Kablosuz ADB Modunu Aç'a basın.\n3. Ardından USB kablosunu çıkarabilirsiniz. 'Kablosuz Ekranı Başlat'a basarak anında bağlanabilirsiniz!\n4. Görüntü ultra akıcı 60 FPS ayrı pencerede açılır; klavye ve farenizle kontrol edebilirsiniz.";
+    guideText.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
+    guideText.textColor = [NSColor colorWithCalibratedWhite:0.8 alpha:1.0];
+    guideText.editable = NO;
+    guideText.bordered = NO;
+    guideText.backgroundColor = [NSColor clearColor];
+    [guideCard addSubview:guideText];
+}
+
+#pragma mark - Screen Mirroring Actions
+
+- (void)launchWirelessMirrorClicked:(id)sender {
+    NSString *ip = [self.mirrorIpField.stringValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (ip.length == 0) {
+        ip = [BluetoothBridge sharedBridge].deviceIpAddress;
+    }
+    if (ip.length == 0) {
+        self.mirrorLogLabel.stringValue = @"⚠️ Telefon Wi-Fi IP adresi bulunamadı. Lütfen telefonun IP adresini girin.";
+        return;
+    }
+
+    NSString *scrcpy = MCFindScrcpyPath();
+    if (!scrcpy) {
+        [self installScrcpyClicked:nil];
+        return;
+    }
+
+    NSString *adb = MCFindAdbPath();
+    self.mirrorLogLabel.stringValue = [NSString stringWithFormat:@"Kablosuz ADB bağlanıyor: %@:5555 ...", ip];
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        // 1. adb connect <IP>:5555
+        NSTask *adbTask = [[NSTask alloc] init];
+        adbTask.launchPath = adb;
+        adbTask.arguments = @[@"connect", [NSString stringWithFormat:@"%@:5555", ip]];
+        [adbTask launch];
+        [adbTask waitUntilExit];
+
+        // 2. Launch scrcpy --tcpip=<IP>:5555
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.mirrorLogLabel.stringValue = [NSString stringWithFormat:@"🚀 Ekran yansıtma başlatıldı: %@:5555", ip];
+        });
+
+        NSTask *scrcpyTask = [[NSTask alloc] init];
+        scrcpyTask.launchPath = scrcpy;
+        scrcpyTask.arguments = @[
+            [NSString stringWithFormat:@"--tcpip=%@:5555", ip],
+            @"--window-title=MacConnect - Telefon Ekranı",
+            @"--stay-awake",
+            @"--max-fps=60"
+        ];
+        NSMutableDictionary *env = [NSMutableDictionary dictionaryWithDictionary:[[NSProcessInfo processInfo] environment]];
+        NSString *adbDir = [adb stringByDeletingLastPathComponent];
+        env[@"PATH"] = [NSString stringWithFormat:@"%@:/opt/homebrew/bin:/usr/local/bin:%@", adbDir, env[@"PATH"] ?: @""];
+        env[@"ADB"] = adb;
+        scrcpyTask.environment = env;
+        @try {
+            [scrcpyTask launch];
+        } @catch (NSException *e) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.mirrorLogLabel.stringValue = [NSString stringWithFormat:@"Hata: %@", e.reason];
+            });
+        }
+    });
+}
+
+- (void)launchUsbMirrorClicked:(id)sender {
+    NSString *scrcpy = MCFindScrcpyPath();
+    if (!scrcpy) {
+        [self installScrcpyClicked:nil];
+        return;
+    }
+    NSString *adb = MCFindAdbPath();
+    self.mirrorLogLabel.stringValue = @"🔌 USB Ekran yansıtma başlatılıyor...";
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSTask *scrcpyTask = [[NSTask alloc] init];
+        scrcpyTask.launchPath = scrcpy;
+        scrcpyTask.arguments = @[
+            @"--window-title=MacConnect - Telefon Ekranı (USB)",
+            @"--stay-awake",
+            @"--max-fps=60"
+        ];
+        NSMutableDictionary *env = [NSMutableDictionary dictionaryWithDictionary:[[NSProcessInfo processInfo] environment]];
+        NSString *adbDir = [adb stringByDeletingLastPathComponent];
+        env[@"PATH"] = [NSString stringWithFormat:@"%@:/opt/homebrew/bin:/usr/local/bin:%@", adbDir, env[@"PATH"] ?: @""];
+        env[@"ADB"] = adb;
+        scrcpyTask.environment = env;
+        @try {
+            [scrcpyTask launch];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.mirrorLogLabel.stringValue = @"🚀 USB Ekran yansıtma devrede!";
+            });
+        } @catch (NSException *e) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.mirrorLogLabel.stringValue = [NSString stringWithFormat:@"Hata: %@", e.reason];
+            });
+        }
+    });
+}
+
+- (void)enableAdbTcpipClicked:(id)sender {
+    NSString *adb = MCFindAdbPath();
+    self.mirrorLogLabel.stringValue = @"📡 'adb tcpip 5555' komutu çalıştırılıyor...";
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSTask *task = [[NSTask alloc] init];
+        task.launchPath = adb;
+        task.arguments = @[@"tcpip", @"5555"];
+        [task launch];
+        [task waitUntilExit];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.mirrorLogLabel.stringValue = @"✓ Telefon kablosuz ADB (5555) moduna alındı. Artık USB kablosunu çıkarıp kablosuz bağlanabilirsiniz!";
+        });
+    });
+}
+
+- (void)installScrcpyClicked:(id)sender {
+    NSString *brewPath = @"/opt/homebrew/bin/brew";
+    if (![[NSFileManager defaultManager] fileExistsAtPath:brewPath]) {
+        brewPath = @"/usr/local/bin/brew";
+    }
+    NSString *cmd = [NSString stringWithFormat:@"%@ install scrcpy android-platform-tools", brewPath];
+    NSString *script = [NSString stringWithFormat:@"tell application \"Terminal\" to do script \"%@\"", cmd];
+    NSAppleScript *as = [[NSAppleScript alloc] initWithSource:script];
+    [as executeAndReturnError:nil];
+    self.mirrorLogLabel.stringValue = @"Terminal açılarak 'brew install scrcpy' başlatıldı. Kurulum tamamlandığında ekran yansıtmayı kullanabilirsiniz.";
 }
 
 #pragma mark - Tab 5: ⚙️ Ayarlar
@@ -1415,6 +1741,24 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
         textLbl.backgroundColor = [NSColor clearColor];
         [card addSubview:textLbl];
 
+        BOOL canReply = [n[@"can_reply"] boolValue];
+        if (!canReply && pkg && (
+            [pkg containsString:@"whatsapp"] ||
+            [pkg containsString:@"telegram"] ||
+            [pkg containsString:@"messaging"] ||
+            [pkg containsString:@"instagram"] ||
+            [pkg containsString:@"signal"])) {
+            canReply = YES;
+        }
+
+        if (canReply) {
+            MCGlassButton *btnReply = [MCGlassButton pillButtonWithTitle:@"💬 Yanıtla" bgAlpha:0.25 tintColor:[NSColor systemGreenColor] target:self action:@selector(notificationDetailClicked:)];
+            btnReply.frame = NSMakeRect(w - 230, 23, 74, 28);
+            btnReply.customIdentifier = [NSString stringWithFormat:@"%ld", (long)i];
+            btnReply.autoresizingMask = NSViewMinXMargin;
+            [card addSubview:btnReply];
+        }
+
         // Action: Detay Görüntüle Pill Button
         MCGlassButton *btnDetail = [MCGlassButton pillButtonWithTitle:@"👁 Detay" bgAlpha:0.18 tintColor:[NSColor systemBlueColor] target:self action:@selector(notificationDetailClicked:)];
         btnDetail.frame = NSMakeRect(w - 150, 23, 68, 28);
@@ -1467,8 +1811,26 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     self.detailOverlayView.layer.backgroundColor = [NSColor colorWithCalibratedWhite:0.0 alpha:0.65].CGColor;
     [self.contentContainerView addSubview:self.detailOverlayView];
 
+    NSString *pkg = notif[@"package_name"] ?: @"";
+    NSString *app = MCResolvePrettyAppName(notif[@"app_name"], pkg);
+    NSString *title = notif[@"title"] ?: @"";
+    NSString *text = notif[@"text"] ?: @"";
+    NSString *subText = notif[@"sub_text"] ?: @"";
+    NSString *iconB64 = notif[@"icon"];
+    NSString *notifId = notif[@"id"] ?: @"";
+
+    BOOL canReply = [notif[@"can_reply"] boolValue];
+    if (!canReply && pkg && (
+        [pkg containsString:@"whatsapp"] ||
+        [pkg containsString:@"telegram"] ||
+        [pkg containsString:@"messaging"] ||
+        [pkg containsString:@"instagram"] ||
+        [pkg containsString:@"signal"])) {
+        canReply = YES;
+    }
+
     CGFloat modalW = MIN(560, bounds.size.width - 40);
-    CGFloat modalH = 440;
+    CGFloat modalH = canReply ? 490 : 440;
     CGFloat modalX = (bounds.size.width - modalW) / 2;
     CGFloat modalY = (bounds.size.height - modalH) / 2;
 
@@ -1477,13 +1839,6 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     self.detailModalCard.glassFillColor = [NSColor colorWithCalibratedRed:0.12 green:0.13 blue:0.16 alpha:0.95];
     self.detailModalCard.glassStrokeColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.25];
     [self.detailOverlayView addSubview:self.detailModalCard];
-
-    NSString *pkg = notif[@"package_name"] ?: @"";
-    NSString *app = MCResolvePrettyAppName(notif[@"app_name"], pkg);
-    NSString *title = notif[@"title"] ?: @"";
-    NSString *text = notif[@"text"] ?: @"";
-    NSString *subText = notif[@"sub_text"] ?: @"";
-    NSString *iconB64 = notif[@"icon"];
 
     // App Icon (48x48)
     NSImageView *iconView = [[NSImageView alloc] initWithFrame:NSMakeRect(20, 20, 48, 48)];
@@ -1550,8 +1905,8 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     notifTitleLbl.backgroundColor = [NSColor clearColor];
     [self.detailModalCard addSubview:notifTitleLbl];
 
-    // Full Scrollable Text Area
-    NSScrollView *bodyScroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(20, 118, modalW - 40, 240)];
+    CGFloat bodyH = canReply ? 140 : 240;
+    NSScrollView *bodyScroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(20, 118, modalW - 40, bodyH)];
     bodyScroll.hasVerticalScroller = YES;
     bodyScroll.drawsBackground = NO;
 
@@ -1565,9 +1920,52 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     bodyScroll.documentView = bodyTextView;
     [self.detailModalCard addSubview:bodyScroll];
 
+    CGFloat bottomBarY = 376;
+
+    if (canReply) {
+        NSBox *div2 = [[NSBox alloc] initWithFrame:NSMakeRect(20, 268, modalW - 40, 1)];
+        div2.boxType = NSBoxCustom;
+        div2.borderWidth = 0;
+        div2.fillColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.15];
+        [self.detailModalCard addSubview:div2];
+
+        NSTextField *replyHeader = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 276, modalW - 40, 18)];
+        replyHeader.stringValue = @"💬 Doğrudan Yanıt Gönder:";
+        replyHeader.font = [NSFont systemFontOfSize:12 weight:NSFontWeightBold];
+        replyHeader.textColor = [NSColor colorWithCalibratedRed:0.4 green:0.95 blue:0.6 alpha:1.0];
+        replyHeader.editable = NO;
+        replyHeader.bordered = NO;
+        replyHeader.backgroundColor = [NSColor clearColor];
+        [self.detailModalCard addSubview:replyHeader];
+
+        NSTextField *replyInput = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 300, modalW - 130, 32)];
+        replyInput.placeholderString = @"Cevabınızı buraya yazın...";
+        replyInput.font = [NSFont systemFontOfSize:13];
+        [self.detailModalCard addSubview:replyInput];
+
+        MCGlassButton *btnSend = [MCGlassButton pillButtonWithTitle:@"Gönder ➔" bgAlpha:0.35 tintColor:[NSColor colorWithCalibratedRed:0.18 green:0.80 blue:0.44 alpha:1.0] target:nil action:nil];
+        btnSend.frame = NSMakeRect(modalW - 100, 300, 80, 32);
+        __weak typeof(btnSend) weakSendBtn = btnSend;
+        __weak typeof(replyInput) weakReplyInput = replyInput;
+        btnSend.onClickBlock = ^{
+            NSString *replyStr = weakReplyInput.stringValue;
+            if (replyStr.length > 0) {
+                [[BluetoothBridge sharedBridge] replyToNotificationWithId:notifId text:replyStr];
+                weakSendBtn.title = @"✓ İletildi!";
+                weakReplyInput.stringValue = @"";
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    weakSendBtn.title = @"Gönder ➔";
+                });
+            }
+        };
+        [self.detailModalCard addSubview:btnSend];
+
+        bottomBarY = 436;
+    }
+
     // Bottom Action Bar: Copy and Close
     MCGlassButton *btnCopyFull = [MCGlassButton pillButtonWithTitle:@"📋 Tam Metni Kopyala" bgAlpha:0.25 tintColor:[NSColor systemBlueColor] target:nil action:nil];
-    btnCopyFull.frame = NSMakeRect(20, 376, 180, 34);
+    btnCopyFull.frame = NSMakeRect(20, bottomBarY, 180, 34);
     __weak typeof(btnCopyFull) weakBtn = btnCopyFull;
     btnCopyFull.onClickBlock = ^{
         NSPasteboard *pb = [NSPasteboard generalPasteboard];
@@ -1581,7 +1979,7 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     [self.detailModalCard addSubview:btnCopyFull];
 
     MCGlassButton *btnDismiss = [MCGlassButton pillButtonWithTitle:@"Kapat" bgAlpha:0.15 tintColor:[NSColor whiteColor] target:self action:@selector(closeDetailModalClicked:)];
-    btnDismiss.frame = NSMakeRect(modalW - 110, 376, 90, 34);
+    btnDismiss.frame = NSMakeRect(modalW - 110, bottomBarY, 90, 34);
     [self.detailModalCard addSubview:btnDismiss];
 }
 
@@ -1670,6 +2068,25 @@ static NSImage *MCDecodeBase64Icon(NSString *base64Str) {
     } else {
         [bridge connectToPairedPhone];
     }
+}
+
+- (void)updateDeviceIpAddress:(NSString *)ipAddress {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (ipAddress && ipAddress.length > 0 && self.mirrorIpField) {
+            if (self.mirrorIpField.stringValue.length == 0 || [self.mirrorIpField.stringValue isEqualToString:@"192.168.1.xxx"]) {
+                self.mirrorIpField.stringValue = ipAddress;
+            }
+        }
+    });
+}
+
+- (void)updateReplyStatus:(BOOL)success notifId:(NSString *)notifId message:(NSString *)message {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (self.detailModalCard) {
+            // Modal open, provide feedback
+            NSLog(@"[MainWindowController] Reply status: %d (%@)", success, message);
+        }
+    });
 }
 
 @end

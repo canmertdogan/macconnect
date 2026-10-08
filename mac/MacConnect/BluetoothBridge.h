@@ -21,6 +21,7 @@ typedef NS_ENUM(NSInteger, MacConnectState) {
 - (void)bridgeDidEndCall:(BluetoothBridge *)bridge;
 - (void)bridge:(BluetoothBridge *)bridge didReceiveMediaPlayback:(NSDictionary *)mediaInfo;
 - (void)bridge:(BluetoothBridge *)bridge didUpdateCallStatus:(NSString *)status message:(NSString *)message;
+- (void)bridge:(BluetoothBridge *)bridge didUpdateReplyStatus:(BOOL)success notifId:(NSString *)notifId message:(NSString *)message;
 @end
 
 @interface BluetoothBridge : NSObject <IOBluetoothRFCOMMChannelDelegate>
@@ -30,6 +31,8 @@ typedef NS_ENUM(NSInteger, MacConnectState) {
 @property (nonatomic, readonly, copy) NSString *connectedDeviceName;
 @property (nonatomic, readonly, copy) NSString *connectedDeviceAddress;
 @property (nonatomic, readonly) NSInteger batteryLevel;
+@property (nonatomic, readonly, copy) NSString *deviceIpAddress;
+@property (nonatomic, readonly, copy) NSString *lastSyncedClipboardText;
 
 + (instancetype)sharedBridge;
 
@@ -39,6 +42,7 @@ typedef NS_ENUM(NSInteger, MacConnectState) {
 - (void)connectToPairedPhone;
 - (void)disconnect;
 - (void)sendDismissForNotificationId:(NSString *)notifId;
+- (void)replyToNotificationWithId:(NSString *)notifId text:(NSString *)text;
 - (void)sendCallAction:(NSString *)action;
 - (void)sendCallAction:(NSString *)action withData:(NSDictionary *)data;
 - (void)dialPhoneNumber:(NSString *)phoneNumber;

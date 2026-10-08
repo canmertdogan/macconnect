@@ -26,6 +26,9 @@ import android.provider.ContactsContract;
 import android.telecom.TelecomManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.widget.Toast;
 import android.util.Log;
 
 import org.json.JSONObject;
@@ -35,7 +38,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.nio.charset.StandardCharsets;
+import java.util.Enumeration;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -58,6 +64,12 @@ public class BluetoothService extends Service {
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private boolean mIsRunning = false;
     private int mCurrentBatteryLevel = 100;
+
+    // Clipboard Synchronization
+    private ClipboardManager mClipboardManager;
+    private ClipboardManager.OnPrimaryClipChangedListener mClipListener;
+    private String mLastSentClipText = "";
+    private String mLastReceivedClipText = "";
 
     // Telephony and Call management
     private TelephonyManager mTelephonyManager;
@@ -99,6 +111,7 @@ public class BluetoothService extends Service {
         startForeground(NOTIF_ID, buildForegroundNotification("MacConnect aktif"));
 
         log("Bluetooth Service started.");
+        setupClipboardSync();
         startServerListening();
         initTelephonyListener();
     }
@@ -128,6 +141,11 @@ public class BluetoothService extends Service {
         try {
             unregisterReceiver(mBatteryReceiver);
         } catch (Exception ignored) {}
+        if (mClipboardManager != null && mClipListener != null) {
+            try {
+                mClipboardManager.removePrimaryClipChangedListener(mClipListener);
+            } catch (Exception ignored) {}
+        }
         if (mTelephonyManager != null && mPhoneStateListener != null) {
             try {
                 mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_NONE);
@@ -300,7 +318,52 @@ public class BluetoothService extends Service {
         }
     }
 
-    public void sendNotification(String id, String pkg, String appName, String title, String text, String subText, String iconB64, long timestamp, boolean isOngoing) {
+    private void setupClipboardSync() {
+        mClipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (mClipboardManager != null) {
+            mClipListener = new ClipboardManager.OnPrimaryClipChangedListener() {
+                @Override
+                public void onPrimaryClipChanged() {
+                    if (mClipboardManager == null) return;
+                    try {
+                        ClipData clip = mClipboardManager.getPrimaryClip();
+                        if (clip != null && clip.getItemCount() > 0) {
+                            CharSequence cs = clip.getItemAt(0).getText();
+                            if (cs != null) {
+                                String text = cs.toString();
+                                if (!text.isEmpty() && !text.equals(mLastReceivedClipText) && !text.equals(mLastSentClipText)) {
+                                    mLastSentClipText = text;
+                                    sendClipboardText(text);
+                                    log("📋 Otomatik Pano: Telefonda kopyalanan metin Mac'e iletildi: " +
+                                            (text.length() > 30 ? text.substring(0, 30) + "..." : text));
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error in onPrimaryClipChanged", e);
+                    }
+                }
+            };
+            mClipboardManager.addPrimaryClipChangedListener(mClipListener);
+        }
+    }
+
+    private String getLocalIpAddress() {
+        try {
+            for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
+                NetworkInterface intf = en.nextElement();
+                for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
+                    InetAddress inetAddress = enumIpAddr.nextElement();
+                    if (!inetAddress.isLoopbackAddress() && inetAddress instanceof java.net.Inet4Address) {
+                        return inetAddress.getHostAddress();
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return "";
+    }
+
+    public void sendNotification(String id, String pkg, String appName, String title, String text, String subText, String iconB64, long timestamp, boolean isOngoing, boolean canReply) {
         try {
             JSONObject obj = new JSONObject();
             obj.put("type", "notification_posted");
@@ -315,15 +378,24 @@ public class BluetoothService extends Service {
             }
             obj.put("timestamp", timestamp > 0 ? timestamp : System.currentTimeMillis());
             obj.put("is_ongoing", isOngoing);
+            obj.put("can_reply", canReply);
             sendJson(obj);
-            log("Forwarded notification: [" + appName + "] " + (title != null ? title : ""));
+            log("Forwarded notification: [" + appName + "] " + (title != null ? title : "") + (canReply ? " [Yanıtlanabilir]" : ""));
         } catch (Exception e) {
             Log.e(TAG, "Error building notification JSON", e);
         }
     }
 
+    public void sendNotification(String id, String pkg, String appName, String title, String text, String subText, String iconB64, long timestamp, boolean isOngoing) {
+        sendNotification(id, pkg, appName, title, text, subText, iconB64, timestamp, isOngoing, false);
+    }
+
+    public void sendNotification(String id, String pkg, String appName, String title, String text, String subText, long timestamp, boolean isOngoing, boolean canReply) {
+        sendNotification(id, pkg, appName, title, text, subText, null, timestamp, isOngoing, canReply);
+    }
+
     public void sendNotification(String id, String pkg, String appName, String title, String text, String subText, long timestamp, boolean isOngoing) {
-        sendNotification(id, pkg, appName, title, text, subText, null, timestamp, isOngoing);
+        sendNotification(id, pkg, appName, title, text, subText, null, timestamp, isOngoing, false);
     }
 
     public void sendNotificationRemoved(String id, String pkg) {
@@ -341,7 +413,7 @@ public class BluetoothService extends Service {
     public void sendTestNotification() {
         sendNotification("test_" + System.currentTimeMillis(), "com.macconnect.android", "MacConnect",
                 "Test Notification", "Hello from Android! Notifications are working over Bluetooth.", "MacConnect Phone Bridge",
-                System.currentTimeMillis(), false);
+                null, System.currentTimeMillis(), false, true);
     }
 
     private void sendHandshake() {
@@ -352,6 +424,7 @@ public class BluetoothService extends Service {
             obj.put("manufacturer", Build.MANUFACTURER);
             obj.put("android_version", Build.VERSION.RELEASE);
             obj.put("battery", getBatteryLevel());
+            obj.put("local_ip", getLocalIpAddress());
             sendJson(obj);
         } catch (Exception e) {
             Log.e(TAG, "Handshake error", e);
@@ -378,21 +451,40 @@ public class BluetoothService extends Service {
                 if (NotificationListener.getInstance() != null && id != null) {
                     NotificationListener.getInstance().cancelNotificationByKey(id);
                 }
+            } else if ("reply_notification".equals(type)) {
+                String id = json.optString("id");
+                String replyText = json.optString("text");
+                if (id != null && !id.isEmpty() && replyText != null && !replyText.isEmpty()) {
+                    boolean ok = false;
+                    if (NotificationListener.getInstance() != null) {
+                        ok = NotificationListener.getInstance().replyToNotification(id, replyText);
+                    }
+                    try {
+                        JSONObject status = new JSONObject();
+                        status.put("type", "reply_status");
+                        status.put("id", id);
+                        status.put("success", ok);
+                        status.put("message", ok ? "Yanıt gönderildi" : "Yanıt gönderilemedi");
+                        sendJson(status);
+                    } catch (Exception ignored) {}
+                    log("Bildirim yanıtı (" + ok + "): " + id + " -> " + replyText);
+                }
             } else if ("call_action".equals(type)) {
                 String action = json.optString("action");
                 handleCallAction(action, json);
             } else if ("clipboard_text".equals(type)) {
                 final String text = json.optString("text");
                 if (text != null && !text.isEmpty()) {
+                    mLastReceivedClipText = text;
                     mHandler.post(new Runnable() {
                         @Override
                         public void run() {
                             try {
-                                android.content.ClipboardManager cb = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                                if (cb != null) {
-                                    android.content.ClipData clip = android.content.ClipData.newPlainText("MacConnect", text);
-                                    cb.setPrimaryClip(clip);
-                                    log("Pano Mac tarafından güncellendi: " + (text.length() > 25 ? text.substring(0, 25) + "..." : text));
+                                if (mClipboardManager != null) {
+                                    ClipData clip = ClipData.newPlainText("MacConnect", text);
+                                    mClipboardManager.setPrimaryClip(clip);
+                                    log("📋 Otomatik Pano: Mac panosu telefona aktarıldı: " + (text.length() > 25 ? text.substring(0, 25) + "..." : text));
+                                    Toast.makeText(BluetoothService.this, "📋 Mac'ten panoya kopyalandı", Toast.LENGTH_SHORT).show();
                                 }
                             } catch (Exception e) {
                                 log("Pano güncellenemedi: " + e.getMessage());
