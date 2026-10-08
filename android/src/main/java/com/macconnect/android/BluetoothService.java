@@ -180,6 +180,13 @@ public class BluetoothService extends Service {
             return;
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                log("Bluetooth connect permission not yet granted, listening deferred.");
+                return;
+            }
+        }
+
         if (mConnectThread != null) {
             mConnectThread.cancel();
             mConnectThread = null;
@@ -193,7 +200,7 @@ public class BluetoothService extends Service {
         if (mAcceptThread == null) {
             mAcceptThread = new AcceptThread();
             mAcceptThread.start();
-            log("Listening for incoming Bluetooth connections from Mac...");
+            log("Listening for incoming Bluetooth connections from Mac (Custom UUID + SPP)...");
         }
     }
 
@@ -433,7 +440,13 @@ public class BluetoothService extends Service {
 
     // --- Call Management & Telephony ---
 
-    public void refreshTelephonyListener() {
+    public synchronized void refreshTelephonyListener() {
+        if (mTelephonyManager != null && mPhoneStateListener != null) {
+            try {
+                mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_NONE);
+            } catch (Exception ignored) {}
+            mPhoneStateListener = null;
+        }
         initTelephonyListener();
     }
 
@@ -442,6 +455,11 @@ public class BluetoothService extends Service {
             mTelephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         }
         if (mTelephonyManager == null) return;
+
+        if (checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            log("Telephony listener deferred: READ_PHONE_STATE permission not yet granted.");
+            return;
+        }
 
         if (mPhoneStateListener == null) {
             try {
@@ -853,33 +871,50 @@ public class BluetoothService extends Service {
     // --- Threads ---
 
     private class AcceptThread extends Thread {
-        private BluetoothServerSocket mmServerSocket;
+        private BluetoothServerSocket mmServerSocketCustom;
+        private BluetoothServerSocket mmServerSocketSpp;
+        private volatile boolean mmCancelled = false;
 
         public AcceptThread() {
+            mmCancelled = false;
+            // 1. Custom 128-bit MacConnect UUID
             try {
-                mmServerSocket = mAdapter.listenUsingInsecureRfcommWithServiceRecord(Constants.SERVICE_NAME, Constants.MACCONNECT_UUID);
+                mmServerSocketCustom = mAdapter.listenUsingInsecureRfcommWithServiceRecord(Constants.SERVICE_NAME, Constants.MACCONNECT_UUID);
                 log("Server socket listening on MACCONNECT_UUID");
             } catch (Exception e) {
-                log("Insecure listen failed: " + e.getMessage());
                 try {
-                    mmServerSocket = mAdapter.listenUsingRfcommWithServiceRecord(Constants.SERVICE_NAME, Constants.MACCONNECT_UUID);
-                    log("Secure listen socket opened");
+                    mmServerSocketCustom = mAdapter.listenUsingRfcommWithServiceRecord(Constants.SERVICE_NAME, Constants.MACCONNECT_UUID);
+                    log("Secure server socket listening on MACCONNECT_UUID");
                 } catch (Exception ex) {
-                    log("Server socket error: " + ex.getMessage());
+                    log("Custom UUID listen error: " + ex.getMessage());
+                }
+            }
+
+            // 2. Standard Bluetooth Serial Port Profile (SPP) UUID
+            try {
+                mmServerSocketSpp = mAdapter.listenUsingInsecureRfcommWithServiceRecord("MacConnect SPP", Constants.SPP_UUID);
+                log("Server socket listening on standard SPP_UUID");
+            } catch (Exception e) {
+                try {
+                    mmServerSocketSpp = mAdapter.listenUsingRfcommWithServiceRecord("MacConnect SPP", Constants.SPP_UUID);
+                    log("Secure server socket listening on standard SPP_UUID");
+                } catch (Exception ex) {
+                    log("SPP UUID listen error: " + ex.getMessage());
                 }
             }
         }
 
-        public void run() {
-            setName("AcceptThread");
-            while (mState != Constants.STATE_CONNECTED && mmServerSocket != null) {
+        private void listenOnServerSocket(BluetoothServerSocket serverSocket, String tag) {
+            if (serverSocket == null) return;
+            while (mState != Constants.STATE_CONNECTED && !mmCancelled) {
                 try {
-                    BluetoothSocket socket = mmServerSocket.accept();
+                    BluetoothSocket socket = serverSocket.accept();
                     if (socket != null) {
                         synchronized (BluetoothService.this) {
                             switch (mState) {
                                 case Constants.STATE_DISCONNECTED:
                                 case Constants.STATE_CONNECTING:
+                                    cancel();
                                     connected(socket, socket.getRemoteDevice());
                                     break;
                                 case Constants.STATE_CONNECTED:
@@ -892,14 +927,48 @@ public class BluetoothService extends Service {
                         break;
                     }
                 } catch (Exception e) {
+                    if (!mmCancelled) {
+                        log("Accept exception on " + tag + ": " + e.getMessage());
+                    }
                     break;
                 }
             }
         }
 
+        public void run() {
+            setName("AcceptThread-Custom");
+            if (mmServerSocketSpp != null) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        listenOnServerSocket(mmServerSocketSpp, "SPP");
+                    }
+                }, "AcceptThread-SPP").start();
+            }
+
+            listenOnServerSocket(mmServerSocketCustom, "Custom");
+
+            // Auto-restart if accept terminated unexpectedly while still disconnected
+            if (!mmCancelled && mState != Constants.STATE_CONNECTED && mIsRunning) {
+                log("AcceptThread stopped unexpectedly. Rescheduling listen in 1.5s...");
+                mHandler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mIsRunning && mState != Constants.STATE_CONNECTED) {
+                            startServerListening();
+                        }
+                    }
+                }, 1500);
+            }
+        }
+
         public void cancel() {
+            mmCancelled = true;
             try {
-                if (mmServerSocket != null) mmServerSocket.close();
+                if (mmServerSocketCustom != null) mmServerSocketCustom.close();
+            } catch (Exception ignored) {}
+            try {
+                if (mmServerSocketSpp != null) mmServerSocketSpp.close();
             } catch (Exception ignored) {}
         }
     }
@@ -907,49 +976,78 @@ public class BluetoothService extends Service {
     private class ConnectThread extends Thread {
         private final BluetoothDevice mmDevice;
         private BluetoothSocket mmSocket;
+        private volatile boolean mmCancelled = false;
 
         public ConnectThread(BluetoothDevice device) {
             mmDevice = device;
-            BluetoothSocket tmp = null;
-            try {
-                tmp = device.createInsecureRfcommSocketToServiceRecord(Constants.MACCONNECT_UUID);
-            } catch (Exception e) {
-                log("createInsecureRfcommSocket error: " + e.getMessage());
-            }
-            mmSocket = tmp;
+            mmCancelled = false;
         }
 
         public void run() {
             setName("ConnectThread");
             if (mAdapter.isDiscovering()) {
-                mAdapter.cancelDiscovery();
+                try {
+                    mAdapter.cancelDiscovery();
+                } catch (Exception ignored) {}
             }
 
             boolean success = false;
-            try {
-                if (mmSocket != null) {
-                    mmSocket.connect();
-                    success = true;
-                }
-            } catch (Exception e1) {
-                Log.w(TAG, "Standard connect failed, attempting reflection channel 1 fallback...", e1);
+
+            // 1. Try MACCONNECT_UUID
+            if (!mmCancelled) {
                 try {
-                    Method m = mmDevice.getClass().getMethod("createRfcommSocket", int.class);
-                    mmSocket = (BluetoothSocket) m.invoke(mmDevice, 1);
+                    mmSocket = mmDevice.createInsecureRfcommSocketToServiceRecord(Constants.MACCONNECT_UUID);
                     if (mmSocket != null) {
                         mmSocket.connect();
                         success = true;
+                        log("Connected via MACCONNECT_UUID");
                     }
-                } catch (Exception e2) {
-                    Log.e(TAG, "Reflection connect fallback also failed", e2);
-                    try {
-                        if (mmSocket != null) mmSocket.close();
-                    } catch (Exception ignored) {}
+                } catch (Exception e1) {
+                    log("Connect via MACCONNECT_UUID failed: " + e1.getMessage());
+                    try { if (mmSocket != null) mmSocket.close(); } catch (Exception ignored) {}
+                    mmSocket = null;
                 }
             }
 
-            if (!success) {
-                log("Failed to connect to " + mmDevice.getName());
+            // 2. Try standard SPP_UUID
+            if (!success && !mmCancelled) {
+                try {
+                    mmSocket = mmDevice.createInsecureRfcommSocketToServiceRecord(Constants.SPP_UUID);
+                    if (mmSocket != null) {
+                        mmSocket.connect();
+                        success = true;
+                        log("Connected via standard SPP_UUID");
+                    }
+                } catch (Exception e2) {
+                    log("Connect via SPP_UUID failed: " + e2.getMessage());
+                    try { if (mmSocket != null) mmSocket.close(); } catch (Exception ignored) {}
+                    mmSocket = null;
+                }
+            }
+
+            // 3. Fallback: try direct RFCOMM channels 1 to 4 via reflection
+            if (!success && !mmCancelled) {
+                for (int ch = 1; ch <= 4; ch++) {
+                    if (mmCancelled) break;
+                    try {
+                        Method m = mmDevice.getClass().getMethod("createRfcommSocket", int.class);
+                        mmSocket = (BluetoothSocket) m.invoke(mmDevice, ch);
+                        if (mmSocket != null) {
+                            mmSocket.connect();
+                            success = true;
+                            log("Connected via reflection RFCOMM channel " + ch);
+                            break;
+                        }
+                    } catch (Exception e3) {
+                        try { if (mmSocket != null) mmSocket.close(); } catch (Exception ignored) {}
+                        mmSocket = null;
+                    }
+                }
+            }
+
+            if (!success || mmCancelled) {
+                log("Failed to connect to " + (mmDevice != null ? mmDevice.getName() : "device"));
+                try { if (mmSocket != null) mmSocket.close(); } catch (Exception ignored) {}
                 connectionLost();
                 return;
             }
@@ -962,6 +1060,7 @@ public class BluetoothService extends Service {
         }
 
         public void cancel() {
+            mmCancelled = true;
             try {
                 if (mmSocket != null) mmSocket.close();
             } catch (Exception ignored) {}

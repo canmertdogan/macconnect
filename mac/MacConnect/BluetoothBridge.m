@@ -62,9 +62,9 @@
     self.state = MacConnectStateDisconnected;
     [self notifyStateChanged];
 
-    // Start auto-connect timer every 6 seconds to probe phone
+    // Start auto-connect timer every 12 seconds to probe phone without thrashing
     if (!_autoConnectTimer) {
-        _autoConnectTimer = [NSTimer scheduledTimerWithTimeInterval:6.0
+        _autoConnectTimer = [NSTimer scheduledTimerWithTimeInterval:12.0
                                                              target:self
                                                            selector:@selector(autoConnectTick:)
                                                            userInfo:nil
@@ -94,33 +94,77 @@
     NSMutableArray<IOBluetoothDevice *> *phones = [NSMutableArray array];
     NSArray *devices = [IOBluetoothDevice pairedDevices];
     for (IOBluetoothDevice *dev in devices) {
-        NSString *name = [dev name];
+        NSString *name = [dev name] ? [dev name] : @"";
         BluetoothClassOfDevice cod = [dev classOfDevice];
         BluetoothDeviceClassMajor major = (cod & 0x1F00) >> 8;
-        if (major == 0x02 || [name localizedCaseInsensitiveContainsString:@"redmi"] ||
+
+        // Skip headphones, speakers, mice, keyboards, printers
+        if (major == 0x04 || major == 0x05 || major == 0x06) {
+            continue;
+        }
+
+        if (major == 0x02 ||
+            [name localizedCaseInsensitiveContainsString:@"phone"] ||
+            [name localizedCaseInsensitiveContainsString:@"android"] ||
+            [name localizedCaseInsensitiveContainsString:@"galaxy"] ||
+            [name localizedCaseInsensitiveContainsString:@"redmi"] ||
             [name localizedCaseInsensitiveContainsString:@"pixel"] ||
             [name localizedCaseInsensitiveContainsString:@"samsung"] ||
-            [name localizedCaseInsensitiveContainsString:@"xiaomi"]) {
+            [name localizedCaseInsensitiveContainsString:@"xiaomi"] ||
+            [name localizedCaseInsensitiveContainsString:@"oneplus"] ||
+            [name localizedCaseInsensitiveContainsString:@"huawei"] ||
+            [name localizedCaseInsensitiveContainsString:@"oppo"] ||
+            [name localizedCaseInsensitiveContainsString:@"vivo"] ||
+            [name localizedCaseInsensitiveContainsString:@"realme"] ||
+            [name localizedCaseInsensitiveContainsString:@"poco"] ||
+            [name localizedCaseInsensitiveContainsString:@"honor"] ||
+            [name localizedCaseInsensitiveContainsString:@"motorola"] ||
+            [name localizedCaseInsensitiveContainsString:@"moto"] ||
+            [name localizedCaseInsensitiveContainsString:@"sony"] ||
+            [name localizedCaseInsensitiveContainsString:@"xperia"] ||
+            [name localizedCaseInsensitiveContainsString:@"nothing"]) {
             [phones addObject:dev];
         }
     }
+
     if (phones.count == 0 && devices.count > 0) {
-        return devices;
+        // Fallback: exclude non-phone peripherals if possible
+        for (IOBluetoothDevice *dev in devices) {
+            BluetoothClassOfDevice cod = [dev classOfDevice];
+            BluetoothDeviceClassMajor major = (cod & 0x1F00) >> 8;
+            if (major != 0x04 && major != 0x05 && major != 0x06) {
+                [phones addObject:dev];
+            }
+        }
     }
-    return phones;
+    return (phones.count > 0) ? phones : devices;
 }
 
 - (void)autoConnectTick:(NSTimer *)timer {
-    if (self.state == MacConnectStateDisconnected) {
+    if (self.state == MacConnectStateDisconnected && !_isQueryingSDP) {
         [self connectToPairedPhone];
     }
 }
 
 - (void)connectToPairedPhone {
-    if (self.state == MacConnectStateConnected || self.state == MacConnectStateConnecting) {
+    if (self.state == MacConnectStateConnected || self.state == MacConnectStateConnecting || _isQueryingSDP) {
         return;
     }
 
+    // 1. Check if we have a remembered phone address
+    NSString *lastAddr = [[NSUserDefaults standardUserDefaults] stringForKey:@"LastConnectedPhoneAddress"];
+    if (lastAddr && lastAddr.length > 0) {
+        NSArray *paired = [IOBluetoothDevice pairedDevices];
+        for (IOBluetoothDevice *dev in paired) {
+            if ([[dev addressString] isEqualToString:lastAddr]) {
+                [self log:[NSString stringWithFormat:@"Remembered phone found: %@ (%@). Connecting...", [dev name], lastAddr]];
+                [self connectToAddress:lastAddr];
+                return;
+            }
+        }
+    }
+
+    // 2. Otherwise try paired phones list
     NSArray<IOBluetoothDevice *> *phones = [self pairedPhones];
     if (phones.count > 0) {
         IOBluetoothDevice *target = phones.firstObject;
@@ -149,13 +193,15 @@
     if (_connectingTimeoutTimer) {
         [_connectingTimeoutTimer invalidate];
     }
-    _connectingTimeoutTimer = [NSTimer scheduledTimerWithTimeInterval:6.0
+    // Generous 15-second timeout for baseband paging and SDP query
+    _connectingTimeoutTimer = [NSTimer scheduledTimerWithTimeInterval:15.0
                                                                target:self
                                                              selector:@selector(connectionTimedOut:)
                                                              userInfo:nil
                                                               repeats:NO];
 
     _isQueryingSDP = YES;
+    [self log:[NSString stringWithFormat:@"Querying SDP services on %@ (%@)...", self.connectedDeviceName, address]];
     [device performSDPQuery:self];
 }
 
@@ -167,36 +213,84 @@
 
     NSArray *services = [device services];
     BluetoothRFCOMMChannelID targetChannel = 0;
+    BluetoothRFCOMMChannelID sppFallbackChannel = 0;
 
     for (IOBluetoothSDPServiceRecord *rec in services) {
         NSString *name = [rec getServiceName];
-        NSDictionary *attrs = [rec attributes];
-        id attr1 = attrs[@1];
+        NSString *recDesc = [rec description];
+        BluetoothRFCOMMChannelID ch = 0;
 
-        // Match by "MacConnect" name or by UUID 94f39d29 in attribute 1
-        if ((name && [name localizedCaseInsensitiveContainsString:@"MacConnect"]) ||
-            (attr1 && [[attr1 description] containsString:@"94 f3 9d 29"])) {
-            [rec getRFCOMMChannelID:&targetChannel];
-            if (targetChannel > 0) {
-                [self log:[NSString stringWithFormat:@"Found MacConnect on channel %d", targetChannel]];
+        if ([rec getRFCOMMChannelID:&ch] == kIOReturnSuccess && ch > 0) {
+            // 1. Match by service name containing "MacConnect"
+            if (name && [name localizedCaseInsensitiveContainsString:@"MacConnect"]) {
+                targetChannel = ch;
+                [self log:[NSString stringWithFormat:@"Matched MacConnect service by name on channel %d", targetChannel]];
                 break;
+            }
+
+            // 2. Match by UUID (94f39d29...)
+            NSString *cleanDesc = [[recDesc lowercaseString] stringByReplacingOccurrencesOfString:@"-" withString:@""];
+            cleanDesc = [cleanDesc stringByReplacingOccurrencesOfString:@" " withString:@""];
+            if ([cleanDesc containsString:@"94f39d297d6d437d973bfba39e49d4ee"] ||
+                [cleanDesc containsString:@"94f39d29"]) {
+                targetChannel = ch;
+                [self log:[NSString stringWithFormat:@"Matched MacConnect service by UUID on channel %d", targetChannel]];
+                break;
+            }
+
+            // 3. Match standard SPP UUID (0x1101)
+            NSDictionary *attrs = [rec attributes];
+            id attr1 = attrs[@1];
+            if (attr1 && ([[attr1 description] containsString:@"1101"] || [[attr1 description] containsString:@"11 01"])) {
+                if (sppFallbackChannel == 0) {
+                    sppFallbackChannel = ch;
+                }
             }
         }
     }
 
+    if (targetChannel == 0 && sppFallbackChannel > 0) {
+        targetChannel = sppFallbackChannel;
+        [self log:[NSString stringWithFormat:@"Using standard SPP channel %d fallback", targetChannel]];
+    }
+
+    // 4. Cached channel fallback
+    if (targetChannel == 0 && [device addressString]) {
+        NSString *cacheKey = [NSString stringWithFormat:@"LastRFCOMMChannel_%@", [device addressString]];
+        NSInteger cachedCh = [[NSUserDefaults standardUserDefaults] integerForKey:cacheKey];
+        if (cachedCh > 0 && cachedCh < 30) {
+            targetChannel = (BluetoothRFCOMMChannelID)cachedCh;
+            [self log:[NSString stringWithFormat:@"Using remembered RFCOMM channel %d for %@", targetChannel, [device name]]];
+        }
+    }
+
     if (targetChannel > 0) {
+        // Reset timeout for RFCOMM channel connection negotiation (10 seconds)
+        if (_connectingTimeoutTimer) {
+            [_connectingTimeoutTimer invalidate];
+        }
+        _connectingTimeoutTimer = [NSTimer scheduledTimerWithTimeInterval:10.0
+                                                                   target:self
+                                                                 selector:@selector(connectionTimedOut:)
+                                                                 userInfo:nil
+                                                                  repeats:NO];
+
+        [self log:[NSString stringWithFormat:@"Opening RFCOMM channel %d to %@...", targetChannel, [device name]]];
         IOBluetoothRFCOMMChannel *channel = nil;
         IOReturn ret = [device openRFCOMMChannelAsync:&channel withChannelID:targetChannel delegate:self];
         if (ret != kIOReturnSuccess) {
+            [self log:[NSString stringWithFormat:@"openRFCOMMChannelAsync failed with status %d", (int)ret]];
             [self resetToDisconnected];
         }
     } else {
+        [self log:@"MacConnect RFCOMM service not found in SDP query."];
         [self resetToDisconnected];
     }
 }
 
 - (void)connectionTimedOut:(NSTimer *)timer {
     if (self.state == MacConnectStateConnecting) {
+        [self log:@"Bluetooth connection attempt timed out."];
         [self resetToDisconnected];
     }
 }
@@ -248,6 +342,17 @@
     self.state = MacConnectStateConnected;
     [self notifyStateChanged];
 
+    if (self.connectedDeviceAddress.length > 0) {
+        [[NSUserDefaults standardUserDefaults] setObject:self.connectedDeviceAddress forKey:@"LastConnectedPhoneAddress"];
+        BluetoothRFCOMMChannelID chID = [channel getChannelID];
+        if (chID > 0) {
+            NSString *cacheKey = [NSString stringWithFormat:@"LastRFCOMMChannel_%@", self.connectedDeviceAddress];
+            [[NSUserDefaults standardUserDefaults] setInteger:chID forKey:cacheKey];
+        }
+        [[NSUserDefaults standardUserDefaults] synchronize];
+    }
+
+    [self log:[NSString stringWithFormat:@"Incoming connection accepted from %@ (Channel %d)!", self.connectedDeviceName, [channel getChannelID]]];
     [self sendHandshakeAck];
 }
 
@@ -269,9 +374,20 @@
         self.state = MacConnectStateConnected;
         [self notifyStateChanged];
 
-        [self log:[NSString stringWithFormat:@"Connected to %@!", self.connectedDeviceName]];
+        if (self.connectedDeviceAddress.length > 0) {
+            [[NSUserDefaults standardUserDefaults] setObject:self.connectedDeviceAddress forKey:@"LastConnectedPhoneAddress"];
+            BluetoothRFCOMMChannelID chID = [rfcommChannel getChannelID];
+            if (chID > 0) {
+                NSString *cacheKey = [NSString stringWithFormat:@"LastRFCOMMChannel_%@", self.connectedDeviceAddress];
+                [[NSUserDefaults standardUserDefaults] setInteger:chID forKey:cacheKey];
+            }
+            [[NSUserDefaults standardUserDefaults] synchronize];
+        }
+
+        [self log:[NSString stringWithFormat:@"Connected successfully to %@ (Channel %d)!", self.connectedDeviceName, [rfcommChannel getChannelID]]];
         [self sendHandshakeAck];
     } else {
+        [self log:[NSString stringWithFormat:@"RFCOMM channel open failed (IOReturn %d)", (int)error]];
         [self resetToDisconnected];
     }
 }

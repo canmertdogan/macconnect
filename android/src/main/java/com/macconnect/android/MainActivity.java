@@ -42,6 +42,7 @@ import java.util.Locale;
 import java.util.Set;
 
 public class MainActivity extends Activity {
+    private static final int REQ_ALL_PERMS = 100;
     private static final int REQ_BT_PERMS = 101;
     private static final int REQ_CALL_PERMS = 102;
     private static final int REQ_PICK_FILE = 201;
@@ -778,6 +779,9 @@ public class MainActivity extends Activity {
             if (hasBluetoothPermissions()) {
                 svc.startServerListening();
             }
+            if (hasCallPermissions()) {
+                svc.refreshTelephonyListener();
+            }
         }
     }
 
@@ -863,10 +867,10 @@ public class MainActivity extends Activity {
         boolean callOk = hasCallPermissions();
         if (mTvCallPermStatus != null) {
             if (callOk) {
-                mTvCallPermStatus.setText("Arama Yanıtlama: Açık ✅");
+                mTvCallPermStatus.setText("Arama & Çağrı İzni: Açık ✅");
                 if (mBtnGrantCall != null) mBtnGrantCall.setVisibility(View.GONE);
             } else {
-                mTvCallPermStatus.setText("Arama Yanıtlama: Gerekli ⚠️");
+                mTvCallPermStatus.setText("Arama & Çağrı İzni: Gerekli ⚠️");
                 if (mBtnGrantCall != null) mBtnGrantCall.setVisibility(View.VISIBLE);
             }
         }
@@ -876,36 +880,54 @@ public class MainActivity extends Activity {
         if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
             return false;
         }
+        if (checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            return false;
+        }
+        if (checkSelfPermission(Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
+            return false;
+        }
+        if (checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            return false;
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (checkSelfPermission(Manifest.permission.ANSWER_PHONE_CALLS) != PackageManager.PERMISSION_GRANTED) {
                 return false;
             }
-        }
-        if (checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            return false;
         }
         return true;
     }
 
     private void requestCallPermissions() {
         List<String> perms = new ArrayList<>();
-        perms.add(Manifest.permission.CALL_PHONE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            perms.add(Manifest.permission.ANSWER_PHONE_CALLS);
+        if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+            perms.add(Manifest.permission.CALL_PHONE);
         }
-        perms.add(Manifest.permission.READ_PHONE_STATE);
-        perms.add(Manifest.permission.READ_CALL_LOG);
-        perms.add(Manifest.permission.READ_CONTACTS);
-
-        requestPermissions(perms.toArray(new String[0]), REQ_CALL_PERMS);
+        if (checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            perms.add(Manifest.permission.READ_PHONE_STATE);
+        }
+        if (checkSelfPermission(Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
+            perms.add(Manifest.permission.READ_CALL_LOG);
+        }
+        if (checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            perms.add(Manifest.permission.READ_CONTACTS);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (checkSelfPermission(Manifest.permission.ANSWER_PHONE_CALLS) != PackageManager.PERMISSION_GRANTED) {
+                perms.add(Manifest.permission.ANSWER_PHONE_CALLS);
+            }
+        }
+        if (!perms.isEmpty()) {
+            requestPermissions(perms.toArray(new String[0]), REQ_CALL_PERMS);
+        }
     }
 
     private boolean hasBluetoothPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED &&
                     checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED;
+        } else {
+            return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         }
-        return true;
     }
 
     private void requestBluetoothPermissions() {
@@ -915,13 +937,84 @@ public class MainActivity extends Activity {
                     Manifest.permission.BLUETOOTH_SCAN,
                     Manifest.permission.BLUETOOTH_ADVERTISE
             }, REQ_BT_PERMS);
+        } else {
+            requestPermissions(new String[]{
+                    Manifest.permission.ACCESS_FINE_LOCATION
+            }, REQ_BT_PERMS);
+        }
+    }
+
+    private void promptNotificationListenerIfNeeded() {
+        if (!isNotificationListenerEnabled()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Bildirim Erişimi Gerekli")
+                    .setMessage("MacConnect'in telefonunuza gelen bildirimleri ve gelen aramaları Mac bilgisayarınıza anında iletebilmesi için Bildirim Erişimi izni gereklidir.\n\nAçılacak ayarlar ekranında MacConnect'i bulun ve izin verin.")
+                    .setPositiveButton("Ayarları Aç", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            try {
+                                startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+                            } catch (Exception e) {
+                                Toast.makeText(MainActivity.this, "Bildirim ayarları açılamadı.", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    })
+                    .setNegativeButton("Daha Sonra", null)
+                    .show();
         }
     }
 
     private void checkAndRequestPermissions() {
         updatePermissionStatusUI();
-        if (!hasBluetoothPermissions()) {
-            requestBluetoothPermissions();
+        List<String> needed = new ArrayList<>();
+
+        // Bluetooth
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                needed.add(Manifest.permission.BLUETOOTH_CONNECT);
+            }
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                needed.add(Manifest.permission.BLUETOOTH_SCAN);
+            }
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
+                needed.add(Manifest.permission.BLUETOOTH_ADVERTISE);
+            }
+        } else {
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                needed.add(Manifest.permission.ACCESS_FINE_LOCATION);
+            }
+        }
+
+        // Notification posting (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                needed.add(Manifest.permission.POST_NOTIFICATIONS);
+            }
+        }
+
+        // Telephony and Call management
+        if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+            needed.add(Manifest.permission.CALL_PHONE);
+        }
+        if (checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            needed.add(Manifest.permission.READ_PHONE_STATE);
+        }
+        if (checkSelfPermission(Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
+            needed.add(Manifest.permission.READ_CALL_LOG);
+        }
+        if (checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            needed.add(Manifest.permission.READ_CONTACTS);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (checkSelfPermission(Manifest.permission.ANSWER_PHONE_CALLS) != PackageManager.PERMISSION_GRANTED) {
+                needed.add(Manifest.permission.ANSWER_PHONE_CALLS);
+            }
+        }
+
+        if (!needed.isEmpty()) {
+            requestPermissions(needed.toArray(new String[0]), REQ_ALL_PERMS);
+        } else {
+            promptNotificationListenerIfNeeded();
         }
     }
 
@@ -932,11 +1025,15 @@ public class MainActivity extends Activity {
         refreshPairedDevices();
         BluetoothService svc = BluetoothService.getInstance();
         if (svc != null) {
-            if (requestCode == REQ_BT_PERMS && hasBluetoothPermissions()) {
+            if (hasBluetoothPermissions()) {
                 svc.startServerListening();
-            } else if (requestCode == REQ_CALL_PERMS) {
+            }
+            if (hasCallPermissions()) {
                 svc.refreshTelephonyListener();
             }
+        }
+        if (requestCode == REQ_ALL_PERMS || requestCode == REQ_BT_PERMS || requestCode == REQ_CALL_PERMS) {
+            promptNotificationListenerIfNeeded();
         }
     }
 
