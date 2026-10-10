@@ -202,9 +202,9 @@ public class MainActivity extends Activity {
                     } else {
                         startService(intent);
                     }
-                    Toast.makeText(MainActivity.this, "Mac'e bağlanılıyor...", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "Connecting to Mac...", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(MainActivity.this, "Lütfen listeden eşleşmiş Mac cihazını seçin.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, "Please select a paired Mac device from the list.", Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -217,7 +217,7 @@ public class MainActivity extends Activity {
                 if (svc != null) {
                     svc.startServerListening();
                 }
-                Toast.makeText(MainActivity.this, "Cihazlar yenilendi ve dinleyici başlatıldı.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Devices refreshed and listener started.", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -248,7 +248,7 @@ public class MainActivity extends Activity {
                 Intent intent = new Intent(MainActivity.this, BluetoothService.class);
                 intent.setAction(Constants.ACTION_SEND_TEST);
                 startService(intent);
-                Toast.makeText(MainActivity.this, "Test bildirimi gönderildi.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Test notification sent.", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -280,7 +280,7 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
                 startActivity(intent);
-                Toast.makeText(MainActivity.this, "MacConnect'i bulun ve izin anahtarını açın.", Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, "Find MacConnect and turn on notification access.", Toast.LENGTH_LONG).show();
             }
         });
 
@@ -306,7 +306,7 @@ public class MainActivity extends Activity {
                     intent.setData(Uri.parse("package:" + getPackageName()));
                     startActivity(intent);
                 } catch (Exception e) {
-                    Toast.makeText(MainActivity.this, "Ayarlar açılamadı.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "Could not open settings.", Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -387,11 +387,11 @@ public class MainActivity extends Activity {
         String appName = item.getAppName().isEmpty() ? item.getPackageName() : item.getAppName();
         tvAppName.setText(appName);
 
-        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMMM yyyy, HH:mm:ss", new Locale("tr", "TR"));
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MMM dd, yyyy, HH:mm:ss", Locale.US);
         tvTime.setText(sdf.format(new java.util.Date(item.getTimestamp())));
         tvPackage.setText(item.getPackageName());
 
-        tvTitle.setText(item.getTitle().isEmpty() ? "(Başlık Yok)" : item.getTitle());
+        tvTitle.setText(item.getTitle().isEmpty() ? "(No Title)" : item.getTitle());
 
         if (item.getSubText() != null && !item.getSubText().isEmpty()) {
             tvSubtext.setText(item.getSubText());
@@ -402,7 +402,7 @@ public class MainActivity extends Activity {
 
         String fullText = item.getText().isEmpty() ? item.getSubText() : item.getText();
         if (fullText.isEmpty()) {
-            fullText = "(İçerik boş)";
+            fullText = "(Empty content)";
         }
         tvBody.setText(fullText);
 
@@ -430,7 +430,7 @@ public class MainActivity extends Activity {
                                    (item.getText().isEmpty() ? item.getSubText() : item.getText());
                     ClipData clip = ClipData.newPlainText("MacConnect Notification", toCopy.trim());
                     clipboard.setPrimaryClip(clip);
-                    Toast.makeText(MainActivity.this, "Bildirim içeriği panoya kopyalandı.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "Notification content copied to clipboard.", Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -448,7 +448,7 @@ public class MainActivity extends Activity {
     private void refreshNotificationHistory() {
         List<NotificationItem> history = NotificationHistoryManager.getInstance(this).getHistory();
         mHistoryAdapter.updateData(history);
-        mTvHistoryHeader.setText("Bildirim Geçmişi (" + history.size() + ")");
+        mTvHistoryHeader.setText("Notification History (" + history.size() + ")");
 
         if (history.isEmpty()) {
             mTvHistoryEmpty.setVisibility(View.VISIBLE);
@@ -461,17 +461,17 @@ public class MainActivity extends Activity {
 
     private void confirmClearHistory() {
         new AlertDialog.Builder(this)
-                .setTitle("Geçmişi Temizle")
-                .setMessage("Tüm kaydedilmiş bildirim geçmişi silinsin mi?")
-                .setPositiveButton("Temizle", new DialogInterface.OnClickListener() {
+                .setTitle("Clear History")
+                .setMessage("Delete all saved notification history?")
+                .setPositiveButton("Clear", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         NotificationHistoryManager.getInstance(MainActivity.this).clearHistory();
                         refreshNotificationHistory();
-                        Toast.makeText(MainActivity.this, "Bildirim geçmişi temizlendi.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "Notification history cleared.", Toast.LENGTH_SHORT).show();
                     }
                 })
-                .setNegativeButton("İptal", null)
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 
@@ -495,15 +495,15 @@ public class MainActivity extends Activity {
     private void updateBatteryOptimizationUI() {
         boolean isIgnored = isIgnoringBatteryOptimizations();
         if (isIgnored) {
-            mTvBatteryOptBadge.setText("Korumalı ✅");
+            mTvBatteryOptBadge.setText("Protected ✅");
             mTvBatteryOptBadge.setTextColor(Color.parseColor("#10B981"));
-            mBtnBatteryOpt.setText("Pil Optimizasyonundan Muaf Tutuldu (Aktif)");
+            mBtnBatteryOpt.setText("Excluded from Battery Optimization (Active)");
             mBtnBatteryOpt.setEnabled(false);
             mBtnBatteryOpt.setBackgroundResource(R.drawable.bg_btn_secondary);
         } else {
-            mTvBatteryOptBadge.setText("Kısıtlı ⚠️");
+            mTvBatteryOptBadge.setText("Restricted ⚠️");
             mTvBatteryOptBadge.setTextColor(Color.parseColor("#F59E0B"));
-            mBtnBatteryOpt.setText("Pil Tasarrufundan Muaf Tut (Önerilen)");
+            mBtnBatteryOpt.setText("Exclude from Battery Saver (Recommended)");
             mBtnBatteryOpt.setEnabled(true);
             mBtnBatteryOpt.setBackgroundResource(R.drawable.bg_btn_primary);
         }
@@ -530,7 +530,7 @@ public class MainActivity extends Activity {
                     Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
                     startActivity(intent);
                 } catch (Exception ignored) {
-                    Toast.makeText(this, "Pil ayarları açılamadı.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Could not open battery settings.", Toast.LENGTH_SHORT).show();
                 }
             }
         }
@@ -544,19 +544,19 @@ public class MainActivity extends Activity {
             CharSequence text = clipboard.getPrimaryClip().getItemAt(0).getText();
             if (text != null && text.length() > 0) {
                 mEtShareText.setText(text);
-                Toast.makeText(this, "Metin panodan yapıştırıldı.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Text pasted from clipboard.", Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(this, "Panoda metin bulunamadı.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "No text found in clipboard.", Toast.LENGTH_SHORT).show();
             }
         } else {
-            Toast.makeText(this, "Pano boş.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Clipboard is empty.", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void sendTextToMac() {
         String text = mEtShareText.getText().toString();
         if (TextUtils.isEmpty(text.trim())) {
-            Toast.makeText(this, "Lütfen gönderilecek metni yazın.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Please enter text to send.", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -564,12 +564,12 @@ public class MainActivity extends Activity {
         if (svc != null && svc.getState() == Constants.STATE_CONNECTED) {
             boolean ok = svc.sendClipboardText(text);
             if (ok) {
-                Toast.makeText(this, "Metin Mac'e iletildi!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Text sent to Mac!", Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(this, "Metin gönderilemedi.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Failed to send text.", Toast.LENGTH_SHORT).show();
             }
         } else {
-            Toast.makeText(this, "Mac ile Bluetooth bağlantısı henüz kurulmadı.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Bluetooth connection to Mac is not established yet.", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -578,7 +578,7 @@ public class MainActivity extends Activity {
     private void openFilePicker() {
         BluetoothService svc = BluetoothService.getInstance();
         if (svc == null || svc.getState() != Constants.STATE_CONNECTED) {
-            Toast.makeText(this, "Önce Mac'e Bluetooth ile bağlanmalısınız.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "You must connect to Mac via Bluetooth first.", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -586,9 +586,9 @@ public class MainActivity extends Activity {
         intent.setType("*/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         try {
-            startActivityForResult(Intent.createChooser(intent, "Mac'e Gönderilecek Dosyayı Seçin"), REQ_PICK_FILE);
+            startActivityForResult(Intent.createChooser(intent, "Select File to Send to Mac"), REQ_PICK_FILE);
         } catch (Exception e) {
-            Toast.makeText(this, "Dosya seçici açılamadı: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Could not open file picker: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -608,11 +608,11 @@ public class MainActivity extends Activity {
         final long fileSize = getFileSizeFromUri(uri);
 
         if (fileSize <= 0) {
-            Toast.makeText(this, "Dosya boyutu okunamadı.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Could not read file size.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        mTvFileStatus.setText("Gönderiliyor: " + fileName + " (%0)");
+        mTvFileStatus.setText("Sending: " + fileName + " (0%)");
         mProgressBarFile.setVisibility(View.VISIBLE);
         mProgressBarFile.setProgress(0);
         mBtnChooseFile.setEnabled(false);
@@ -626,7 +626,7 @@ public class MainActivity extends Activity {
                         @Override
                         public void run() {
                             mProgressBarFile.setProgress(percent);
-                            mTvFileStatus.setText("Gönderiliyor: " + fileName + " (%" + percent + ")");
+                            mTvFileStatus.setText("Sending: " + fileName + " (" + percent + "%)");
                         }
                     });
                 }
@@ -638,8 +638,8 @@ public class MainActivity extends Activity {
                         public void run() {
                             mProgressBarFile.setVisibility(View.GONE);
                             mBtnChooseFile.setEnabled(true);
-                            mTvFileStatus.setText("Başarıyla Mac'e aktarıldı: " + name);
-                            Toast.makeText(MainActivity.this, "Dosya Mac'e gönderildi: " + name, Toast.LENGTH_LONG).show();
+                            mTvFileStatus.setText("Successfully transferred to Mac: " + name);
+                            Toast.makeText(MainActivity.this, "File sent to Mac: " + name, Toast.LENGTH_LONG).show();
                         }
                     });
                 }
@@ -651,8 +651,8 @@ public class MainActivity extends Activity {
                         public void run() {
                             mProgressBarFile.setVisibility(View.GONE);
                             mBtnChooseFile.setEnabled(true);
-                            mTvFileStatus.setText("Hata: " + error);
-                            Toast.makeText(MainActivity.this, "Dosya aktarılamadı: " + error, Toast.LENGTH_LONG).show();
+                            mTvFileStatus.setText("Error: " + error);
+                            Toast.makeText(MainActivity.this, "File transfer failed: " + error, Toast.LENGTH_LONG).show();
                         }
                     });
                 }
@@ -674,7 +674,7 @@ public class MainActivity extends Activity {
         }
         if (result == null) {
             result = uri.getLastPathSegment();
-            if (result == null) result = "dosya_" + System.currentTimeMillis();
+            if (result == null) result = "file_" + System.currentTimeMillis();
         }
         return result;
     }
@@ -709,7 +709,7 @@ public class MainActivity extends Activity {
         List<String> logs = BluetoothService.getLogs();
         StringBuilder sb = new StringBuilder();
         if (logs.isEmpty()) {
-            sb.append("Henüz kaydedilmiş log bulunmuyor.");
+            sb.append("No logs recorded yet.");
         } else {
             for (String line : logs) {
                 sb.append(line).append("\n");
@@ -728,23 +728,23 @@ public class MainActivity extends Activity {
         scrollView.addView(tv);
 
         new AlertDialog.Builder(this)
-                .setTitle("Geliştirici Logları")
+                .setTitle("Developer Logs")
                 .setView(scrollView)
-                .setPositiveButton("Kapat", null)
-                .setNeutralButton("Temizle", new DialogInterface.OnClickListener() {
+                .setPositiveButton("Close", null)
+                .setNeutralButton("Clear", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         BluetoothService.clearLogs();
-                        Toast.makeText(MainActivity.this, "Loglar temizlendi.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "Logs cleared.", Toast.LENGTH_SHORT).show();
                     }
                 })
-                .setNegativeButton("Kopyala", new DialogInterface.OnClickListener() {
+                .setNegativeButton("Copy", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                         if (cm != null) {
                             cm.setPrimaryClip(ClipData.newPlainText("MacConnect Logs", logText));
-                            Toast.makeText(MainActivity.this, "Loglar panoya kopyalandı.", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(MainActivity.this, "Logs copied to clipboard.", Toast.LENGTH_SHORT).show();
                         }
                     }
                 })
@@ -808,25 +808,25 @@ public class MainActivity extends Activity {
     private void updateConnectionUI(int state, String devName) {
         if (state == Constants.STATE_CONNECTED) {
             setDotColor(Color.parseColor("#10B981")); // Emerald Green
-            mTvStatusTitle.setText("Bağlantı Aktif");
-            mTvHeaderStatus.setText("Bağlı");
+            mTvStatusTitle.setText("Connection Active");
+            mTvHeaderStatus.setText("Connected");
             mTvHeaderStatus.setTextColor(Color.parseColor("#10B981"));
-            mTvStatusDetail.setText("💻 " + (devName != null ? devName : "Mac") + " bağlı. Bildirimler ve veriler gerçek zamanlı aktarılıyor.");
-            mBtnConnect.setText("Bağlandı");
+            mTvStatusDetail.setText("💻 " + (devName != null ? devName : "Mac") + " connected. Notifications and data are syncing in real time.");
+            mBtnConnect.setText("Connected");
         } else if (state == Constants.STATE_CONNECTING) {
             setDotColor(Color.parseColor("#F59E0B")); // Amber
-            mTvStatusTitle.setText("Bağlanıyor...");
-            mTvHeaderStatus.setText("Bağlanıyor");
+            mTvStatusTitle.setText("Connecting...");
+            mTvHeaderStatus.setText("Connecting");
             mTvHeaderStatus.setTextColor(Color.parseColor("#F59E0B"));
-            mTvStatusDetail.setText("Mac ile Bluetooth kanalı kuruluyor...");
-            mBtnConnect.setText("Bağlanıyor...");
+            mTvStatusDetail.setText("Establishing Bluetooth channel with Mac...");
+            mBtnConnect.setText("Connecting...");
         } else {
             setDotColor(Color.parseColor("#EF4444")); // Rose Red
-            mTvStatusTitle.setText("Bağlantı Bekleniyor");
-            mTvHeaderStatus.setText("Bağlantı Yok");
+            mTvStatusTitle.setText("Waiting for Connection");
+            mTvHeaderStatus.setText("Not Connected");
             mTvHeaderStatus.setTextColor(Color.parseColor("#A1A1AA"));
-            mTvStatusDetail.setText("Mac'ten Bluetooth bağlantısı bekleniyor (veya yukarıdan bağlanın).");
-            mBtnConnect.setText("Mac'e Bağlan");
+            mTvStatusDetail.setText("Waiting for Bluetooth connection from Mac (or connect above).");
+            mBtnConnect.setText("Connect to Mac");
         }
     }
 
@@ -848,29 +848,29 @@ public class MainActivity extends Activity {
     private void updatePermissionStatusUI() {
         boolean notifOk = isNotificationListenerEnabled();
         if (notifOk) {
-            mTvNotifPermStatus.setText("Bildirim Erişimi: Açık ✅");
+            mTvNotifPermStatus.setText("Notification Access: Enabled ✅");
             mBtnGrantNotif.setVisibility(View.GONE);
         } else {
-            mTvNotifPermStatus.setText("Bildirim Erişimi: Gerekli ⚠️");
+            mTvNotifPermStatus.setText("Notification Access: Required ⚠️");
             mBtnGrantNotif.setVisibility(View.VISIBLE);
         }
 
         boolean btOk = hasBluetoothPermissions();
         if (btOk) {
-            mTvBtPermStatus.setText("Bluetooth İzni: Açık ✅");
+            mTvBtPermStatus.setText("Bluetooth Permission: Enabled ✅");
             mBtnGrantBt.setVisibility(View.GONE);
         } else {
-            mTvBtPermStatus.setText("Bluetooth İzni: Gerekli ⚠️");
+            mTvBtPermStatus.setText("Bluetooth Permission: Required ⚠️");
             mBtnGrantBt.setVisibility(View.VISIBLE);
         }
 
         boolean callOk = hasCallPermissions();
         if (mTvCallPermStatus != null) {
             if (callOk) {
-                mTvCallPermStatus.setText("Arama & Çağrı İzni: Açık ✅");
+                mTvCallPermStatus.setText("Call Management Permission: Enabled ✅");
                 if (mBtnGrantCall != null) mBtnGrantCall.setVisibility(View.GONE);
             } else {
-                mTvCallPermStatus.setText("Arama & Çağrı İzni: Gerekli ⚠️");
+                mTvCallPermStatus.setText("Call Management Permission: Required ⚠️");
                 if (mBtnGrantCall != null) mBtnGrantCall.setVisibility(View.VISIBLE);
             }
         }
@@ -947,19 +947,19 @@ public class MainActivity extends Activity {
     private void promptNotificationListenerIfNeeded() {
         if (!isNotificationListenerEnabled()) {
             new AlertDialog.Builder(this)
-                    .setTitle("Bildirim Erişimi Gerekli")
-                    .setMessage("MacConnect'in telefonunuza gelen bildirimleri ve gelen aramaları Mac bilgisayarınıza anında iletebilmesi için Bildirim Erişimi izni gereklidir.\n\nAçılacak ayarlar ekranında MacConnect'i bulun ve izin verin.")
-                    .setPositiveButton("Ayarları Aç", new DialogInterface.OnClickListener() {
+                    .setTitle("Notification Access Required")
+                    .setMessage("MacConnect requires Notification Access permission to immediately forward notifications and incoming phone calls to your Mac.\n\nFind MacConnect in the settings screen that opens and grant access.")
+                    .setPositiveButton("Open Settings", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             try {
-                                startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+                                 startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
                             } catch (Exception e) {
-                                Toast.makeText(MainActivity.this, "Bildirim ayarları açılamadı.", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(MainActivity.this, "Could not open notification settings.", Toast.LENGTH_SHORT).show();
                             }
                         }
                     })
-                    .setNegativeButton("Daha Sonra", null)
+                    .setNegativeButton("Later", null)
                     .show();
         }
     }
@@ -1051,7 +1051,7 @@ public class MainActivity extends Activity {
                     for (BluetoothDevice dev : paired) {
                         mDeviceList.add(dev);
                         String name = dev.getName();
-                        if (name == null || name.isEmpty()) name = "Bilinmeyen Cihaz";
+                        if (name == null || name.isEmpty()) name = "Unknown Device";
                         mDeviceLabels.add(name + " (" + dev.getAddress() + ")");
                         if (name.toLowerCase(Locale.ROOT).contains("mac") || name.toLowerCase(Locale.ROOT).contains("apple")) {
                             macIndex = idx;
@@ -1065,7 +1065,7 @@ public class MainActivity extends Activity {
                 }
             } catch (SecurityException ignored) {}
         } else {
-            mDeviceLabels.add("Bluetooth kapalı");
+            mDeviceLabels.add("Bluetooth disabled");
             mSpinnerAdapter.notifyDataSetChanged();
         }
     }

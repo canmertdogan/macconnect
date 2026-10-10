@@ -61,7 +61,7 @@
                 android:id="@+id/tv_header_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Bağlantı Yok"
+                android:text="Not Connected"
                 android:textColor="#A1A1AA"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -89,7 +89,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="⚡ Araçlar"
+                android:text="⚡ Tools"
                 android:textSize="12sp"
                 android:textStyle="bold"
                 android:textColor="#FFFFFF"
@@ -100,7 +100,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="📬 Bildirimler"
+                android:text="📬 Notifications"
                 android:textSize="12sp"
                 android:textStyle="bold"
                 android:textColor="#71717A"
@@ -111,7 +111,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="⚙️ Pil &amp; Ayarlar"
+                android:text="⚙️ Battery &amp; Settings"
                 android:textSize="12sp"
                 android:textStyle="bold"
                 android:textColor="#71717A"
@@ -163,7 +163,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Bağlantı Bekleniyor"
+                        android:text="Waiting for Connection"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
                         android:textStyle="bold" />
@@ -187,7 +187,7 @@
                     android:id="@+id/tv_status_detail"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Mac'ten Bluetooth bağlantısı bekleniyor..."
+                    android:text="Waiting for Bluetooth connection from Mac..."
                     android:textColor="#A1A1AA"
                     android:textSize="13sp"
                     android:layout_marginTop="6dp"
@@ -196,7 +196,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Eşleşen Mac Cihazı:"
+                    android:text="Paired Mac Device:"
                     android:textColor="#71717A"
                     android:textSize="12sp"
                     android:layout_marginBottom="6dp" />
@@ -218,7 +218,7 @@
                         android:layout_width="0dp"
                         android:layout_height="42dp"
                         android:layout_weight="1"
-                        android:text="Mac'e Bağlan"
+                        android:text="Connect to Mac"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="#FFFFFF"
@@ -229,7 +229,7 @@
                         android:id="@+id/btn_refresh"
                         android:layout_width="wrap_content"
                         android:layout_height="42dp"
-                        android:text="Yenile"
+                        android:text="Refresh"
                         android:textSize="13sp"
                         android:textColor="#FFFFFF"
                         android:background="@drawable/bg_btn_secondary" />
@@ -248,7 +248,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Mac'e Metin / Pano Gönder"
+                    android:text="Send Text / Clipboard to Mac"
                     android:textColor="#FFFFFF"
                     android:textSize="16sp"
                     android:textStyle="bold" />
@@ -256,7 +256,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Yazılan metin veya link Mac'in panosuna anında aktarılır."
+                    android:text="Typed text or links are instantly synced to Mac clipboard."
                     android:textColor="#71717A"
                     android:textSize="12sp"
                     android:layout_marginTop="2dp"
@@ -271,7 +271,7 @@
                     android:gravity="top|start"
                     android:background="@drawable/bg_edittext"
                     android:padding="12dp"
-                    android:hint="Mac'e göndermek istediğiniz metni veya notu yazın..."
+                    android:hint="Type text or notes to send to Mac..."
                     android:textColorHint="#52525B"
                     android:textColor="#FFFFFF"
                     android:textSize="13sp"
@@ -287,7 +287,7 @@
                         android:layout_width="0dp"
                         android:layout_height="40dp"
                         android:layout_weight="1"
-                        android:text="📋 Panodan Yapıştır"
+                        android:text="📋 Paste from Clipboard"
                         android:textSize="12sp"
                         android:textColor="#FFFFFF"
                         android:background="@drawable/bg_btn_secondary"
@@ -298,7 +298,7 @@
                         android:layout_width="0dp"
                         android:layout_height="40dp"
                         android:layout_weight="1"
-                        android:text="📤 Mac'e Gönder"
+                        android:text="📤 Send to Mac"
                         android:textSize="12sp"
                         android:textStyle="bold"
                         android:textColor="#FFFFFF"
@@ -318,7 +318,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Mac'e Dosya Gönder"
+                    android:text="Send File to Mac"
                     android:textColor="#FFFFFF"
                     android:textSize="16sp"
                     android:textStyle="bold" />
@@ -326,7 +326,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Fotoğraf, video veya belgeleri Mac İndirilenler klasörüne aktarır."
+                    android:text="Transfers photos, videos, or documents to Mac Downloads folder."
                     android:textColor="#71717A"
                     android:textSize="12sp"
                     android:layout_marginTop="2dp"
@@ -336,7 +336,7 @@
                     android:id="@+id/btn_choose_file"
                     android:layout_width="match_parent"
                     android:layout_height="42dp"
-                    android:text="📂 Dosya Seç ve Gönder"
+                    android:text="📂 Select &amp; Send File"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     android:textColor="#FFFFFF"
@@ -346,7 +346,7 @@
                     android:id="@+id/tv_file_status"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Henüz dosya seçilmedi"
+                    android:text="No file selected yet"
                     android:textColor="#71717A"
                     android:textSize="12sp"
                     android:layout_marginTop="8dp" />
@@ -373,7 +373,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Tanılama &amp; Loglar"
+                    android:text="Diagnostics &amp; Logs"
                     android:textColor="#FFFFFF"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -389,7 +389,7 @@
                         android:layout_width="0dp"
                         android:layout_height="40dp"
                         android:layout_weight="1"
-                        android:text="Test Bildirimi"
+                        android:text="Test Notification"
                         android:textSize="12sp"
                         android:textColor="#FFFFFF"
                         android:background="@drawable/bg_btn_secondary"
@@ -400,7 +400,7 @@
                         android:layout_width="0dp"
                         android:layout_height="40dp"
                         android:layout_weight="1"
-                        android:text="Geliştirici Logları"
+                        android:text="Developer Logs"
                         android:textSize="12sp"
                         android:textColor="#FFFFFF"
                         android:background="@drawable/bg_btn_secondary" />
@@ -434,7 +434,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Bildirim Geçmişi (0)"
+                android:text="Notification History (0)"
                 android:textColor="#FFFFFF"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -443,7 +443,7 @@
                 android:id="@+id/btn_clear_history"
                 android:layout_width="wrap_content"
                 android:layout_height="34dp"
-                android:text="Temizle"
+                android:text="Clear"
                 android:textSize="11sp"
                 android:textColor="#EF4444"
                 android:background="@drawable/bg_btn_secondary" />
@@ -453,7 +453,7 @@
             android:id="@+id/tv_history_empty"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Henüz kaydedilmiş bildirim yok.\nTelefona gelen bildirimler burada listelenecek ve Mac'e aktarılacaktır."
+            android:text="No notifications recorded yet.\nIncoming phone notifications will appear here and sync to Mac."
             android:textColor="#71717A"
             android:textSize="13sp"
             android:gravity="center"
@@ -507,7 +507,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Pil Optimizasyonu &amp; Doze"
+                        android:text="Battery Optimization &amp; Doze"
                         android:textColor="#FFFFFF"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -521,7 +521,7 @@
                         android:paddingEnd="8dp"
                         android:paddingTop="3dp"
                         android:paddingBottom="3dp"
-                        android:text="Korumalı ✅"
+                        android:text="Protected ✅"
                         android:textColor="#10B981"
                         android:textSize="11sp"
                         android:textStyle="bold" />
@@ -530,7 +530,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="MacConnect ekran kapalıyken bile arka planda kesintisiz çalışır. Bluetooth RFCOMM donanım seviyesinde dinlenir ve CPU uyku modunda kalarak sıfıra yakın (&lt;%0.1) pil tüketir."
+                    android:text="MacConnect runs seamlessly in the background even with the screen off. Bluetooth RFCOMM listens at hardware level and consumes virtually zero (&lt;0.1%) battery while the CPU stays asleep."
                     android:textColor="#A1A1AA"
                     android:textSize="13sp"
                     android:lineSpacingExtra="3dp"
@@ -540,7 +540,7 @@
                     android:id="@+id/btn_battery_opt"
                     android:layout_width="match_parent"
                     android:layout_height="42dp"
-                    android:text="Pil Tasarrufundan Muaf Tut (Önerilen)"
+                    android:text="Exclude from Battery Saver (Recommended)"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     android:textColor="#FFFFFF"
@@ -559,7 +559,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Sistem İzinleri"
+                    android:text="System Permissions"
                     android:textColor="#FFFFFF"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -578,7 +578,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Bildirim Erişimi"
+                        android:text="Notification Access"
                         android:textColor="#E4E4E7"
                         android:textSize="14sp" />
 
@@ -586,7 +586,7 @@
                         android:id="@+id/btn_grant_notif"
                         android:layout_width="wrap_content"
                         android:layout_height="36dp"
-                        android:text="İzin Ver"
+                        android:text="Grant"
                         android:textSize="12sp"
                         android:background="@drawable/bg_btn_primary"
                         android:textColor="#FFFFFF" />
@@ -605,7 +605,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Bluetooth İzni"
+                        android:text="Bluetooth Permission"
                         android:textColor="#E4E4E7"
                         android:textSize="14sp" />
 
@@ -613,7 +613,7 @@
                         android:id="@+id/btn_grant_bt"
                         android:layout_width="wrap_content"
                         android:layout_height="36dp"
-                        android:text="İzin Ver"
+                        android:text="Grant"
                         android:textSize="12sp"
                         android:background="@drawable/bg_btn_primary"
                         android:textColor="#FFFFFF" />
@@ -631,7 +631,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Arama Yanıtlama İzni"
+                        android:text="Call Answering Permission"
                         android:textColor="#E4E4E7"
                         android:textSize="14sp" />
 
@@ -639,7 +639,7 @@
                         android:id="@+id/btn_grant_call"
                         android:layout_width="wrap_content"
                         android:layout_height="36dp"
-                        android:text="İzin Ver"
+                        android:text="Grant"
                         android:textSize="12sp"
                         android:background="@drawable/bg_btn_primary"
                         android:textColor="#FFFFFF" />
@@ -657,7 +657,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Redmi / Xiaomi / MIUI Arka Plan Rehberi"
+                    android:text="Redmi / Xiaomi / MIUI Background Guide"
                     android:textColor="#FFFFFF"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -666,7 +666,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="MIUI / HyperOS arka planda çalışan servisleri agresif şekilde sonlandırabilir. Kesintisiz bağlantı için:"
+                    android:text="MIUI / HyperOS may aggressively terminate background services. For uninterrupted connection:"
                     android:textColor="#A1A1AA"
                     android:textSize="13sp"
                     android:layout_marginBottom="10dp" />
@@ -674,7 +674,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="1. Otomatik Başlatma (Autostart) iznini açık tutun.\n2. Pil Tasarrufu ayarını 'Kısıtlama Yok' yapın.\n3. Son Uygulamalar ekranında MacConnect kartını aşağı çekip kilitleyin."
+                    android:text="1. Keep Autostart permission enabled.\n2. Set Battery Saver to 'No restrictions'.\n3. In Recent Apps, swipe down on MacConnect and lock it."
                     android:textColor="#71717A"
                     android:textSize="12sp"
                     android:lineSpacingExtra="4dp"
@@ -684,7 +684,7 @@
                     android:id="@+id/btn_battery_settings"
                     android:layout_width="match_parent"
                     android:layout_height="40dp"
-                    android:text="Uygulama Bilgisi / Ayarları Aç"
+                    android:text="Open App Info / Settings"
                     android:textSize="12sp"
                     android:textColor="#FFFFFF"
                     android:background="@drawable/bg_btn_secondary" />

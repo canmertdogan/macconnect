@@ -15,7 +15,7 @@
         android:layout_marginEnd="12dp"
         android:layout_marginTop="2dp"
         android:src="@mipmap/ic_launcher"
-        android:contentDescription="Uygulama Simgesi" />
+        android:contentDescription="App Icon" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -35,7 +35,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Uygulama"
+                android:text="App"
                 android:textColor="#FFFFFF"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -53,7 +53,7 @@
             android:id="@+id/tv_item_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Bildirim Başlığı"
+            android:text="Notification Title"
             android:textColor="#E4E4E7"
             android:textSize="14sp"
             android:textStyle="bold"
@@ -64,7 +64,7 @@
             android:id="@+id/tv_item_body"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Bildirim içeriği detayları..."
+            android:text="Notification content details..."
             android:textColor="#A1A1AA"
             android:textSize="13sp"
             android:maxLines="3"

@@ -380,7 +380,7 @@ public class BluetoothService extends Service {
             obj.put("is_ongoing", isOngoing);
             obj.put("can_reply", canReply);
             sendJson(obj);
-            log("Forwarded notification: [" + appName + "] " + (title != null ? title : "") + (canReply ? " [Yanıtlanabilir]" : ""));
+            log("Forwarded notification: [" + appName + "] " + (title != null ? title : "") + (canReply ? " [Replyable]" : ""));
         } catch (Exception e) {
             Log.e(TAG, "Error building notification JSON", e);
         }
@@ -464,10 +464,10 @@ public class BluetoothService extends Service {
                         status.put("type", "reply_status");
                         status.put("id", id);
                         status.put("success", ok);
-                        status.put("message", ok ? "Yanıt gönderildi" : "Yanıt gönderilemedi");
+                        status.put("message", ok ? "Reply sent" : "Reply could not be sent");
                         sendJson(status);
                     } catch (Exception ignored) {}
-                    log("Bildirim yanıtı (" + ok + "): " + id + " -> " + replyText);
+                    log("Notification reply (" + ok + "): " + id + " -> " + replyText);
                 }
             } else if ("call_action".equals(type)) {
                 String action = json.optString("action");
@@ -483,11 +483,11 @@ public class BluetoothService extends Service {
                                 if (mClipboardManager != null) {
                                     ClipData clip = ClipData.newPlainText("MacConnect", text);
                                     mClipboardManager.setPrimaryClip(clip);
-                                    log("📋 Otomatik Pano: Mac panosu telefona aktarıldı: " + (text.length() > 25 ? text.substring(0, 25) + "..." : text));
-                                    Toast.makeText(BluetoothService.this, "📋 Mac'ten panoya kopyalandı", Toast.LENGTH_SHORT).show();
+                                    log("📋 Universal Clipboard: Mac clipboard synced to phone: " + (text.length() > 25 ? text.substring(0, 25) + "..." : text));
+                                    Toast.makeText(BluetoothService.this, "📋 Copied from Mac to clipboard", Toast.LENGTH_SHORT).show();
                                 }
                             } catch (Exception e) {
-                                log("Pano güncellenemedi: " + e.getMessage());
+                                log("Clipboard could not be updated: " + e.getMessage());
                             }
                         }
                     });
@@ -515,7 +515,7 @@ public class BluetoothService extends Service {
             JSONObject obj = new JSONObject();
             obj.put("type", "media_playback");
             obj.put("package_name", pkg != null ? pkg : "");
-            obj.put("app_name", appName != null ? appName : "Müzik");
+            obj.put("app_name", appName != null ? appName : "Music");
             obj.put("title", title);
             obj.put("artist", artist);
             obj.put("sub_text", subText != null ? subText : "");
@@ -524,7 +524,7 @@ public class BluetoothService extends Service {
             }
             obj.put("timestamp", System.currentTimeMillis());
             sendJson(obj);
-            log("Medya yayını iletildi: " + appName + " - " + title + " (" + artist + ")");
+            log("Media playback forwarded: " + appName + " - " + title + " (" + artist + ")");
         } catch (Exception e) {
             Log.e(TAG, "Error building media_playback JSON", e);
         }
@@ -701,17 +701,17 @@ public class BluetoothService extends Service {
                     }
                     callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(callIntent);
-                    log("Arama başlatıldı: " + number);
+                    log("Call started: " + number);
 
                     try {
                         JSONObject statusObj = new JSONObject();
                         statusObj.put("type", "call_status");
                         statusObj.put("status", "dialing");
-                        statusObj.put("message", "Telefonda arama başlatıldı: " + number);
+                        statusObj.put("message", "Call initiated on phone: " + number);
                         sendJson(statusObj);
                     } catch (Exception ignored) {}
                 } catch (Exception e) {
-                    log("Arama başlatılamadı (" + number + "): " + e.getMessage());
+                    log("Call could not be started (" + number + "): " + e.getMessage());
                 }
             }
             return;
@@ -727,7 +727,7 @@ public class BluetoothService extends Service {
                     JSONObject statusObj = new JSONObject();
                     statusObj.put("type", "call_status");
                     statusObj.put("status", "on_computer");
-                    statusObj.put("message", "Arama bilgisayar masası modunda aktif. Eller serbest hoparlör devrede.");
+                    statusObj.put("message", "Call active in desk mode. Speakerphone enabled.");
                     sendJson(statusObj);
                 } catch (Exception ignored) {}
             }

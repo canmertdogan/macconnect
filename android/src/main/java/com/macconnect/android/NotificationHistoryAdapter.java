@@ -81,7 +81,7 @@ public class NotificationHistoryAdapter extends BaseAdapter {
         if (item != null) {
             holder.tvAppName.setText(item.getAppName().isEmpty() ? item.getPackageName() : item.getAppName());
             holder.tvTime.setText(mTimeFormat.format(new Date(item.getTimestamp())));
-            holder.tvTitle.setText(item.getTitle().isEmpty() ? "(Başlık Yok)" : item.getTitle());
+            holder.tvTitle.setText(item.getTitle().isEmpty() ? "(No Title)" : item.getTitle());
             holder.tvBody.setText(item.getText().isEmpty() ? item.getSubText() : item.getText());
 
             Drawable icon = getCachedAppIcon(item.getPackageName());

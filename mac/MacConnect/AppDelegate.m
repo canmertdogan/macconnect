@@ -61,7 +61,7 @@
     [self.statusMenu addItem:headerItem];
 
     // Open Main Window Item
-    NSMenuItem *openWindowItem = [[NSMenuItem alloc] initWithTitle:@"MacConnect'i Aç (Pencere)" action:@selector(openMainWindowClicked:) keyEquivalent:@"m"];
+    NSMenuItem *openWindowItem = [[NSMenuItem alloc] initWithTitle:@"Open MacConnect Window" action:@selector(openMainWindowClicked:) keyEquivalent:@"m"];
     [openWindowItem setTarget:self];
     [self.statusMenu addItem:openWindowItem];
 
@@ -78,21 +78,21 @@
     [self.statusMenu addItem:self.batteryMenuItem];
 
     // Incoming Call Menu Items
-    self.incomingCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"📞 Gelen Arama: --" action:nil keyEquivalent:@""];
+    self.incomingCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"📞 Incoming Call: --" action:nil keyEquivalent:@""];
     [self.incomingCallMenuItem setHidden:YES];
     [self.statusMenu addItem:self.incomingCallMenuItem];
 
-    self.answerCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"   📞 Aramayı Cevapla" action:@selector(answerCallClicked:) keyEquivalent:@""];
+    self.answerCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"   📞 Answer Call" action:@selector(answerCallClicked:) keyEquivalent:@""];
     [self.answerCallMenuItem setTarget:self];
     [self.answerCallMenuItem setHidden:YES];
     [self.statusMenu addItem:self.answerCallMenuItem];
 
-    self.answerSpeakerCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"   🔊 Hoparlörle Aç (Eller Serbest)" action:@selector(answerSpeakerCallClicked:) keyEquivalent:@""];
+    self.answerSpeakerCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"   🔊 Answer on Speakerphone" action:@selector(answerSpeakerCallClicked:) keyEquivalent:@""];
     [self.answerSpeakerCallMenuItem setTarget:self];
     [self.answerSpeakerCallMenuItem setHidden:YES];
     [self.statusMenu addItem:self.answerSpeakerCallMenuItem];
 
-    self.rejectCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"   ❌ Aramayı Reddet" action:@selector(rejectCallClicked:) keyEquivalent:@""];
+    self.rejectCallMenuItem = [[NSMenuItem alloc] initWithTitle:@"   ❌ Decline Call" action:@selector(rejectCallClicked:) keyEquivalent:@""];
     [self.rejectCallMenuItem setTarget:self];
     [self.rejectCallMenuItem setHidden:YES];
     [self.statusMenu addItem:self.rejectCallMenuItem];
@@ -194,9 +194,9 @@
 
 - (void)sendTestNotificationClicked:(id)sender {
     [[NotificationPresenter sharedPresenter] presentNotificationWithAppName:@"WhatsApp"
-                                                                      title:@"Test Kullanıcısı"
-                                                                       body:@"MacConnect bildirim testi başarıyla çalışıyor!"
-                                                                    subText:@"Doğrudan Bluetooth"
+                                                                      title:@"Test User"
+                                                                       body:@"MacConnect notification test is working properly!"
+                                                                    subText:@"Direct Bluetooth"
                                                                       sound:YES];
 }
 
@@ -243,10 +243,10 @@
 
 - (void)updateCallMenuState {
     if (self.activeIncomingCall) {
-        NSString *name = self.activeIncomingCall[@"name"] ? self.activeIncomingCall[@"name"] : @"Arayan";
+        NSString *name = self.activeIncomingCall[@"name"] ? self.activeIncomingCall[@"name"] : @"Caller";
         NSString *num = self.activeIncomingCall[@"number"] ? self.activeIncomingCall[@"number"] : @"";
         self.statusItem.button.title = @"📞";
-        self.incomingCallMenuItem.title = [NSString stringWithFormat:@"📞 Gelen Arama: %@ (%@)", name, num];
+        self.incomingCallMenuItem.title = [NSString stringWithFormat:@"📞 Incoming Call: %@ (%@)", name, num];
         self.incomingCallMenuItem.hidden = NO;
         self.answerCallMenuItem.hidden = NO;
         self.answerSpeakerCallMenuItem.hidden = NO;
@@ -370,18 +370,18 @@
 
     NSString *preview = text.length > 80 ? [NSString stringWithFormat:@"%@...", [text substringToIndex:80]] : text;
     [[NotificationPresenter sharedPresenter] presentNotificationWithAppName:@"MacConnect"
-                                                                      title:@"Metin Panoya Kopyalandı"
+                                                                      title:@"Text Copied to Clipboard"
                                                                        body:preview
-                                                                    subText:@"Telefondan Gönderildi"
+                                                                    subText:@"Sent from Phone"
                                                                       sound:YES];
 }
 
 - (void)bridge:(BluetoothBridge *)bridge didReceiveFileAtPath:(NSString *)filePath fileName:(NSString *)fileName fileSize:(NSUInteger)fileSize {
     NSString *sizeStr = [NSByteCountFormatter stringFromByteCount:fileSize countStyle:NSByteCountFormatterCountStyleFile];
     [[NotificationPresenter sharedPresenter] presentNotificationWithAppName:@"MacConnect"
-                                                                      title:@"Dosya Alındı"
-                                                                       body:[NSString stringWithFormat:@"%@ (%@) ~/Downloads/MacConnect klasörüne kaydedildi.", fileName, sizeStr]
-                                                                    subText:@"Telefondan Gönderildi"
+                                                                      title:@"File Received"
+                                                                       body:[NSString stringWithFormat:@"%@ (%@) saved to ~/Downloads/MacConnect folder.", fileName, sizeStr]
+                                                                    subText:@"Sent from Phone"
                                                                       sound:YES];
 }
 

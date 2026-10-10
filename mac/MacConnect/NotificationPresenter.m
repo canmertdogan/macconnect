@@ -32,13 +32,13 @@
 
     // Call Action Category
     UNNotificationAction *answerAction = [UNNotificationAction actionWithIdentifier:@"ACTION_ANSWER"
-                                                                              title:@"📞 Cevapla"
+                                                                              title:@"📞 Answer"
                                                                             options:UNNotificationActionOptionForeground];
     UNNotificationAction *speakerAction = [UNNotificationAction actionWithIdentifier:@"ACTION_SPEAKER"
-                                                                               title:@"🔊 Hoparlörle Aç"
+                                                                               title:@"🔊 Answer on Speaker"
                                                                              options:UNNotificationActionOptionForeground];
     UNNotificationAction *rejectAction = [UNNotificationAction actionWithIdentifier:@"ACTION_REJECT"
-                                                                              title:@"❌ Reddet"
+                                                                              title:@"❌ Decline"
                                                                             options:UNNotificationActionOptionDestructive];
 
     UNNotificationCategory *callCategory = [UNNotificationCategory categoryWithIdentifier:@"MC_INCOMING_CALL"
@@ -48,10 +48,10 @@
 
     // Quick Reply Action for messaging notifications (WhatsApp, Telegram, SMS, etc.)
     UNTextInputNotificationAction *replyAction = [UNTextInputNotificationAction actionWithIdentifier:@"ACTION_REPLY"
-                                                                                              title:@"💬 Yanıtla"
+                                                                                              title:@"💬 Reply"
                                                                                             options:UNNotificationActionOptionNone
-                                                                               textInputButtonTitle:@"Gönder"
-                                                                               textInputPlaceholder:@"Mesajınızı yazın..."];
+                                                                               textInputButtonTitle:@"Send"
+                                                                               textInputPlaceholder:@"Type your message..."];
 
     UNNotificationCategory *msgCategory = [UNNotificationCategory categoryWithIdentifier:@"MC_MESSAGE_NOTIFICATION"
                                                                                   actions:@[replyAction]
@@ -109,16 +109,16 @@ static NSString *MCResolvePrettyAppName(NSString *rawAppName, NSString *packageN
         return rawAppName;
     }
     NSString *pkg = (packageName && packageName.length > 0) ? packageName : rawAppName;
-    if (!pkg || pkg.length == 0) return @"Uygulama";
+    if (!pkg || pkg.length == 0) return @"App";
 
     NSDictionary *known = @{
-        @"com.google.android.calendar": @"Google Takvim",
+        @"com.google.android.calendar": @"Google Calendar",
         @"com.google.android.gm": @"Gmail",
-        @"com.google.android.apps.messaging": @"Mesajlar",
+        @"com.google.android.apps.messaging": @"Messages",
         @"com.google.android.youtube": @"YouTube",
-        @"com.google.android.apps.photos": @"Google Fotoğraflar",
-        @"com.google.android.apps.maps": @"Google Haritalar",
-        @"com.google.android.deskclock": @"Saat",
+        @"com.google.android.apps.photos": @"Google Photos",
+        @"com.google.android.apps.maps": @"Google Maps",
+        @"com.google.android.deskclock": @"Clock",
         @"com.google.android.keep": @"Google Keep",
         @"com.whatsapp": @"WhatsApp",
         @"org.telegram.messenger": @"Telegram",
@@ -133,9 +133,9 @@ static NSString *MCResolvePrettyAppName(NSString *rawAppName, NSString *packageN
         @"com.microsoft.teams": @"Microsoft Teams",
         @"com.microsoft.office.outlook": @"Outlook",
         @"com.netflix.mediaclient": @"Netflix",
-        @"com.android.phone": @"Telefon",
-        @"com.google.android.dialer": @"Telefon",
-        @"com.samsung.android.incallui": @"Telefon",
+        @"com.android.phone": @"Phone",
+        @"com.google.android.dialer": @"Phone",
+        @"com.samsung.android.incallui": @"Phone",
         @"com.apple.android.music": @"Apple Music",
         @"deezer.android.app": @"Deezer"
     };
@@ -293,14 +293,14 @@ static NSString *MCResolvePrettyAppName(NSString *rawAppName, NSString *packageN
                              number:(NSString *)number
                             appName:(NSString *)appName {
     dispatch_async(dispatch_get_main_queue(), ^{
-        NSString *caller = (name && name.length > 0) ? name : @"Bilinmeyen Arayan";
+        NSString *caller = (name && name.length > 0) ? name : @"Unknown Caller";
         NSString *num = (number && number.length > 0) ? number : @"";
-        NSString *sourceApp = (appName && appName.length > 0) ? appName : @"Telefon";
+        NSString *sourceApp = (appName && appName.length > 0) ? appName : @"Phone";
 
         UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
-        content.title = [NSString stringWithFormat:@"📞 Gelen Arama: %@", caller];
+        content.title = [NSString stringWithFormat:@"📞 Incoming Call: %@", caller];
         content.subtitle = sourceApp;
-        content.body = num.length > 0 ? num : @"Mac'ten yanıtlayabilir veya reddedebilirsiniz.";
+        content.body = num.length > 0 ? num : @"Answer or decline directly from Mac.";
         content.sound = [UNNotificationSound defaultSound];
         content.categoryIdentifier = @"MC_INCOMING_CALL";
 
@@ -316,7 +316,7 @@ static NSString *MCResolvePrettyAppName(NSString *rawAppName, NSString *packageN
         }];
 
         if (!self.isAuthorized) {
-            [self deliverViaAppleScriptWithTitle:[NSString stringWithFormat:@"📞 Gelen Arama: %@", caller]
+            [self deliverViaAppleScriptWithTitle:[NSString stringWithFormat:@"📞 Incoming Call: %@", caller]
                                         subtitle:sourceApp
                                             body:num
                                            sound:YES];

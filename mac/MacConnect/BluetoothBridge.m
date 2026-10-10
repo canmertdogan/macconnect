@@ -124,7 +124,7 @@
                 _lastSentClipboardText = current;
                 self.lastSyncedClipboardText = current;
                 [self sendClipboardText:current];
-                [self log:[NSString stringWithFormat:@"📋 Otomatik Pano: Mac panosu telefona aktarıldı (%lu karakter)", (unsigned long)current.length]];
+                [self log:[NSString stringWithFormat:@"📋 Universal Clipboard: Mac clipboard synced to phone (%lu chars)", (unsigned long)current.length]];
             }
         }
     }
@@ -536,13 +536,13 @@
                     [self.delegate bridge:self didReceiveClipboardText:text];
                 }
             });
-            [self log:[NSString stringWithFormat:@"📋 Otomatik Pano: Telefonda kopyalanan metin Mac panosuna aktarıldı (%lu karakter)", (unsigned long)text.length]];
+            [self log:[NSString stringWithFormat:@"📋 Universal Clipboard: Phone clipboard synced to Mac (%lu chars)", (unsigned long)text.length]];
         }
     } else if ([@"reply_status" isEqualToString:type]) {
         BOOL success = [json[@"success"] boolValue];
         NSString *notifId = json[@"id"] ?: @"";
         NSString *msg = json[@"message"] ?: @"";
-        [self log:[NSString stringWithFormat:@"Bildirim yanıt durumu: %@ (%@)", success ? @"Başarılı" : @"Başarısız", msg]];
+        [self log:[NSString stringWithFormat:@"Notification reply status: %@ (%@)", success ? @"Success" : @"Failed", msg]];
         dispatch_async(dispatch_get_main_queue(), ^{
             if ([self.delegate respondsToSelector:@selector(bridge:didUpdateReplyStatus:notifId:message:)]) {
                 [self.delegate bridge:self didUpdateReplyStatus:success notifId:notifId message:msg];
@@ -668,7 +668,7 @@
         NSMutableData *line = [NSMutableData dataWithData:jsonData];
         [line appendBytes:"\n" length:1];
         [self sendData:line];
-        [self log:[NSString stringWithFormat:@"Bildirime doğrudan yanıt gönderildi [%@]: %@", notifId, text]];
+        [self log:[NSString stringWithFormat:@"Direct reply sent for notification [%@]: %@", notifId, text]];
     }
 }
 

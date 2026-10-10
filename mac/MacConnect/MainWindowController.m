@@ -8,16 +8,16 @@ static NSString *MCResolvePrettyAppName(NSString *rawAppName, NSString *packageN
         return rawAppName;
     }
     NSString *pkg = (packageName && packageName.length > 0) ? packageName : rawAppName;
-    if (!pkg || pkg.length == 0) return @"Uygulama";
+    if (!pkg || pkg.length == 0) return @"App";
 
     NSDictionary *known = @{
-        @"com.google.android.calendar": @"Google Takvim",
+        @"com.google.android.calendar": @"Google Calendar",
         @"com.google.android.gm": @"Gmail",
-        @"com.google.android.apps.messaging": @"Google Mesajlar",
+        @"com.google.android.apps.messaging": @"Google Messages",
         @"com.google.android.youtube": @"YouTube",
-        @"com.google.android.apps.photos": @"Google Fotoğraflar",
-        @"com.google.android.apps.maps": @"Google Haritalar",
-        @"com.google.android.deskclock": @"Saat",
+        @"com.google.android.apps.photos": @"Google Photos",
+        @"com.google.android.apps.maps": @"Google Maps",
+        @"com.google.android.deskclock": @"Clock",
         @"com.google.android.keep": @"Google Keep",
         @"com.whatsapp": @"WhatsApp",
         @"org.telegram.messenger": @"Telegram",
@@ -32,9 +32,9 @@ static NSString *MCResolvePrettyAppName(NSString *rawAppName, NSString *packageN
         @"com.microsoft.teams": @"Microsoft Teams",
         @"com.microsoft.office.outlook": @"Outlook",
         @"com.netflix.mediaclient": @"Netflix",
-        @"com.android.phone": @"Telefon",
-        @"com.google.android.dialer": @"Telefon",
-        @"com.samsung.android.incallui": @"Telefon",
+        @"com.android.phone": @"Phone",
+        @"com.google.android.dialer": @"Phone",
+        @"com.samsung.android.incallui": @"Phone",
         @"com.apple.android.music": @"Apple Music",
         @"deezer.android.app": @"Deezer"
     };
@@ -529,7 +529,7 @@ static NSString *MCFindScrcpyPath(void) {
     [statusPill addSubview:self.sidebarStatusDot];
 
     self.sidebarStatusLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(26, 5, w - 66, 18)];
-    self.sidebarStatusLabel.stringValue = @"Bağlantı Yok";
+    self.sidebarStatusLabel.stringValue = @"Not Connected";
     self.sidebarStatusLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightSemibold];
     self.sidebarStatusLabel.textColor = [NSColor colorWithCalibratedWhite:0.8 alpha:1.0];
     self.sidebarStatusLabel.editable = NO;
@@ -539,11 +539,11 @@ static NSString *MCFindScrcpyPath(void) {
 
     // Navigation Items (Floating Liquid Glass Pills - 5 Core Modules)
     NSArray *navItems = @[
-        @{@"icon": @"📞", @"title": @"Aramalar & Tuş Takımı"},
-        @{@"icon": @"🔔", @"title": @"Bildirimler"},
-        @{@"icon": @"📋", @"title": @"Cihaz & Pano"},
-        @{@"icon": @"🖥️", @"title": @"Ekran Yansıtma"},
-        @{@"icon": @"⚙️", @"title": @"Ayarlar"}
+        @{@"icon": @"📞", @"title": @"Calls & Keypad"},
+        @{@"icon": @"🔔", @"title": @"Notifications"},
+        @{@"icon": @"📋", @"title": @"Device & Clipboard"},
+        @{@"icon": @"🖥️", @"title": @"Screen Mirroring"},
+        @{@"icon": @"⚙️", @"title": @"Settings"}
     ];
 
     CGFloat btnY = 136;
@@ -573,7 +573,7 @@ static NSString *MCFindScrcpyPath(void) {
     [self.sidebarContentView addSubview:self.sidebarFooterCard];
 
     self.sidebarBatteryLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(12, 48, w - 48, 20)];
-    self.sidebarBatteryLabel.stringValue = @"🔋 Pil: --";
+    self.sidebarBatteryLabel.stringValue = @"🔋 Battery: --";
     self.sidebarBatteryLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightMedium];
     self.sidebarBatteryLabel.textColor = [NSColor colorWithCalibratedWhite:0.8 alpha:1.0];
     self.sidebarBatteryLabel.editable = NO;
@@ -581,7 +581,7 @@ static NSString *MCFindScrcpyPath(void) {
     self.sidebarBatteryLabel.backgroundColor = [NSColor clearColor];
     [self.sidebarFooterCard addSubview:self.sidebarBatteryLabel];
 
-    self.sidebarConnectButton = [MCGlassButton pillButtonWithTitle:@"Telefona Bağlan"
+    self.sidebarConnectButton = [MCGlassButton pillButtonWithTitle:@"Connect to Phone"
                                                            bgAlpha:0.18
                                                          tintColor:[NSColor systemBlueColor]
                                                             target:self
@@ -643,7 +643,7 @@ static NSString *MCFindScrcpyPath(void) {
     if (self.detailOverlayView) self.detailOverlayView.frame = self.contentContainerView.bounds;
 }
 
-#pragma mark - Tab 1: 📞 Aramalar (FaceTime Grade iPhone Style Circular Dialpad)
+#pragma mark - Tab 1: 📞 Calls (iPhone Style Circular Dialpad)
 
 - (void)buildCallsTab {
     self.callsView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
@@ -651,7 +651,7 @@ static NSString *MCFindScrcpyPath(void) {
 
     // Header Title
     NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 380, 28)];
-    tabTitle.stringValue = @"Aramalar ve Telefon Köprüsü";
+    tabTitle.stringValue = @"Calls & Phone Bridge";
     tabTitle.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
     tabTitle.textColor = [NSColor whiteColor];
     tabTitle.editable = NO;
@@ -687,7 +687,7 @@ static NSString *MCFindScrcpyPath(void) {
     CGFloat titleW = self.callHeroCard.bounds.size.width - 82 - 280;
     self.callHeroTitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(82, 18, titleW, 26)];
     self.callHeroTitleLabel.autoresizingMask = NSViewWidthSizable;
-    self.callHeroTitleLabel.stringValue = @"Aktif Arama Yok";
+    self.callHeroTitleLabel.stringValue = @"No Active Call";
     self.callHeroTitleLabel.font = [NSFont systemFontOfSize:17 weight:NSFontWeightBold];
     self.callHeroTitleLabel.textColor = [NSColor whiteColor];
     self.callHeroTitleLabel.editable = NO;
@@ -697,7 +697,7 @@ static NSString *MCFindScrcpyPath(void) {
 
     self.callHeroSubtitleLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(82, 46, titleW, 32)];
     self.callHeroSubtitleLabel.autoresizingMask = NSViewWidthSizable;
-    self.callHeroSubtitleLabel.stringValue = @"Tuş takımından numara arayabilir veya gelen aramaları masanızdan yanıtlayabilirsiniz.";
+    self.callHeroSubtitleLabel.stringValue = @"Dial a number below or answer incoming calls directly from your Mac.";
     self.callHeroSubtitleLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
     self.callHeroSubtitleLabel.textColor = [NSColor colorWithCalibratedWhite:0.7 alpha:1.0];
     self.callHeroSubtitleLabel.editable = NO;
@@ -716,10 +716,10 @@ static NSString *MCFindScrcpyPath(void) {
     self.callHeroButtonStack.autoresizingMask = NSViewMinXMargin;
     [self.callHeroCard addSubview:self.callHeroButtonStack];
 
-    self.btnAnswerCall = [MCGlassButton pillButtonWithTitle:@"📞 Cevapla" bgAlpha:0.35 tintColor:[NSColor colorWithCalibratedRed:0.18 green:0.80 blue:0.44 alpha:1.0] target:self action:@selector(actionAnswerClicked:)];
+    self.btnAnswerCall = [MCGlassButton pillButtonWithTitle:@"📞 Answer" bgAlpha:0.35 tintColor:[NSColor colorWithCalibratedRed:0.18 green:0.80 blue:0.44 alpha:1.0] target:self action:@selector(actionAnswerClicked:)];
     [self.callHeroButtonStack addArrangedSubview:self.btnAnswerCall];
 
-    self.btnRejectCall = [MCGlassButton pillButtonWithTitle:@"❌ Reddet" bgAlpha:0.35 tintColor:[NSColor colorWithCalibratedRed:0.95 green:0.25 blue:0.25 alpha:1.0] target:self action:@selector(actionRejectClicked:)];
+    self.btnRejectCall = [MCGlassButton pillButtonWithTitle:@"❌ Decline" bgAlpha:0.35 tintColor:[NSColor colorWithCalibratedRed:0.95 green:0.25 blue:0.25 alpha:1.0] target:self action:@selector(actionRejectClicked:)];
     [self.callHeroButtonStack addArrangedSubview:self.btnRejectCall];
 
     self.callHeroButtonStack.hidden = YES;
@@ -732,7 +732,7 @@ static NSString *MCFindScrcpyPath(void) {
 
     // TOP OF DIALPAD CARD: Number Input Field with Monospaced Digits (y = 14)
     self.dialerNumberField = [[NSTextField alloc] initWithFrame:NSMakeRect(24, 14, 244, 38)];
-    self.dialerNumberField.placeholderString = @"Numara tuşlayın...";
+    self.dialerNumberField.placeholderString = @"Enter phone number...";
     self.dialerNumberField.font = [NSFont monospacedDigitSystemFontOfSize:25 weight:NSFontWeightLight];
     self.dialerNumberField.textColor = [NSColor whiteColor];
     self.dialerNumberField.backgroundColor = [NSColor clearColor];
@@ -808,7 +808,7 @@ static NSString *MCFindScrcpyPath(void) {
     [self.callsView addSubview:recentCard];
 
     NSTextField *recentHeader = [[NSTextField alloc] initWithFrame:NSMakeRect(18, 18, recentW - 36, 22)];
-    recentHeader.stringValue = @"Son Aramalar";
+    recentHeader.stringValue = @"Recent Calls";
     recentHeader.font = [NSFont systemFontOfSize:15 weight:NSFontWeightBold];
     recentHeader.textColor = [NSColor whiteColor];
     recentHeader.editable = NO;
@@ -829,14 +829,14 @@ static NSString *MCFindScrcpyPath(void) {
     [self rebuildRecentCallsStack];
 }
 
-#pragma mark - Tab 2: 🔔 Bildirimler (Notification Center Glass Feed & Full Detail)
+#pragma mark - Tab 2: 🔔 Notifications (Notification Center Glass Feed & Full Detail)
 
 - (void)buildNotificationsTab {
     self.notificationsView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
     CGFloat pad = 24;
 
     NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 180, 28)];
-    tabTitle.stringValue = @"Bildirimler";
+    tabTitle.stringValue = @"Notifications";
     tabTitle.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
     tabTitle.textColor = [NSColor whiteColor];
     tabTitle.editable = NO;
@@ -853,7 +853,7 @@ static NSString *MCFindScrcpyPath(void) {
     self.notificationsCountBadge.backgroundColor = [NSColor clearColor];
     [self.notificationsView addSubview:self.notificationsCountBadge];
 
-    NSButton *btnClear = [MCGlassButton pillButtonWithTitle:@"Tümünü Temizle" bgAlpha:0.12 tintColor:[NSColor whiteColor] target:self action:@selector(clearAllNotificationsClicked:)];
+    NSButton *btnClear = [MCGlassButton pillButtonWithTitle:@"Clear All" bgAlpha:0.12 tintColor:[NSColor whiteColor] target:self action:@selector(clearAllNotificationsClicked:)];
     btnClear.frame = NSMakeRect(self.notificationsView.bounds.size.width - 160, 48, 136, 30);
     btnClear.autoresizingMask = NSViewMinXMargin;
     [self.notificationsView addSubview:btnClear];
@@ -874,14 +874,14 @@ static NSString *MCFindScrcpyPath(void) {
     [self rebuildNotificationsStack];
 }
 
-#pragma mark - Tab 3: 📋 Cihaz & Pano
+#pragma mark - Tab 3: 📋 Device & Clipboard
 
 - (void)buildDeviceTab {
     self.deviceView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
     CGFloat pad = 24;
 
     NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 380, 28)];
-    tabTitle.stringValue = @"Cihaz & Evrensel Pano";
+    tabTitle.stringValue = @"Device & Universal Clipboard";
     tabTitle.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
     tabTitle.textColor = [NSColor whiteColor];
     tabTitle.editable = NO;
@@ -897,7 +897,7 @@ static NSString *MCFindScrcpyPath(void) {
     [self.deviceView addSubview:infoCard];
 
     self.deviceModelLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 16, cardW - 40, 22)];
-    self.deviceModelLabel.stringValue = @"Cihaz: Telefon Bekleniyor...";
+    self.deviceModelLabel.stringValue = @"Device: Waiting for Phone...";
     self.deviceModelLabel.font = [NSFont systemFontOfSize:15 weight:NSFontWeightBold];
     self.deviceModelLabel.textColor = [NSColor whiteColor];
     self.deviceModelLabel.editable = NO;
@@ -906,7 +906,7 @@ static NSString *MCFindScrcpyPath(void) {
     [infoCard addSubview:self.deviceModelLabel];
 
     self.deviceStatusFullLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 42, cardW - 40, 18)];
-    self.deviceStatusFullLabel.stringValue = @"Bağlantı: Bluetooth RFCOMM (Bağlantı Yok)";
+    self.deviceStatusFullLabel.stringValue = @"Connection: Bluetooth RFCOMM (Not Connected)";
     self.deviceStatusFullLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
     self.deviceStatusFullLabel.textColor = [NSColor colorWithCalibratedWhite:0.7 alpha:1.0];
     self.deviceStatusFullLabel.editable = NO;
@@ -915,7 +915,7 @@ static NSString *MCFindScrcpyPath(void) {
     [infoCard addSubview:self.deviceStatusFullLabel];
 
     self.deviceBatteryFullLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 64, cardW - 40, 18)];
-    self.deviceBatteryFullLabel.stringValue = @"Pil Durumu: --";
+    self.deviceBatteryFullLabel.stringValue = @"Battery Level: --";
     self.deviceBatteryFullLabel.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
     self.deviceBatteryFullLabel.textColor = [NSColor colorWithCalibratedWhite:0.7 alpha:1.0];
     self.deviceBatteryFullLabel.editable = NO;
@@ -932,7 +932,7 @@ static NSString *MCFindScrcpyPath(void) {
     [self.deviceView addSubview:clipHeroCard];
 
     NSTextField *clipBadge = [[NSTextField alloc] initWithFrame:NSMakeRect(18, 14, cardW - 36, 22)];
-    clipBadge.stringValue = @"🟢 Çift Yönlü Otomatik Pano Aktif (Universal Continuity Clipboard)";
+    clipBadge.stringValue = @"🟢 Two-Way Auto Clipboard Active (Universal Continuity Clipboard)";
     clipBadge.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
     clipBadge.textColor = [NSColor colorWithCalibratedRed:0.4 green:0.95 blue:0.6 alpha:1.0];
     clipBadge.editable = NO;
@@ -941,7 +941,7 @@ static NSString *MCFindScrcpyPath(void) {
     [clipHeroCard addSubview:clipBadge];
 
     NSTextField *clipDesc = [[NSTextField alloc] initWithFrame:NSMakeRect(18, 38, cardW - 36, 44)];
-    clipDesc.stringValue = @"Mac'te Cmd+C ile kopyaladığınız her metin anında telefonun panosuna geçer.\nTelefonda kopyaladığınız her metin anında Mac panosuna aktarılır. Herhangi bir butona basmanız gerekmez.";
+    clipDesc.stringValue = @"Text copied on Mac with Cmd+C is instantly synced to your phone clipboard.\nText copied on your phone is immediately synced to your Mac clipboard. Zero clicks required.";
     clipDesc.font = [NSFont systemFontOfSize:11.5 weight:NSFontWeightRegular];
     clipDesc.textColor = [NSColor colorWithCalibratedWhite:0.85 alpha:1.0];
     clipDesc.editable = NO;
@@ -955,7 +955,7 @@ static NSString *MCFindScrcpyPath(void) {
     [self.deviceView addSubview:recvCard];
 
     NSTextField *recvTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(18, 12, cardW - 36, 20)];
-    recvTitle.stringValue = @"📋 Telefondan Otomatik Alınan Son Pano İçeriği";
+    recvTitle.stringValue = @"📋 Last Clipboard Text Received from Phone";
     recvTitle.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
     recvTitle.textColor = [NSColor whiteColor];
     recvTitle.editable = NO;
@@ -981,7 +981,7 @@ static NSString *MCFindScrcpyPath(void) {
     [self.deviceView addSubview:sendCard];
 
     NSTextField *sendTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(18, 12, cardW - 36, 20)];
-    sendTitle.stringValue = @"Telefona Manuel Metin Gönder";
+    sendTitle.stringValue = @"Send Text Manually to Phone";
     sendTitle.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
     sendTitle.textColor = [NSColor whiteColor];
     sendTitle.editable = NO;
@@ -1000,19 +1000,19 @@ static NSString *MCFindScrcpyPath(void) {
     sendScroll.documentView = self.sendClipboardTextView;
     [sendCard addSubview:sendScroll];
 
-    NSButton *btnSendClip = [MCGlassButton pillButtonWithTitle:@"Telefona Gönder" bgAlpha:0.25 tintColor:[NSColor systemBlueColor] target:self action:@selector(sendClipboardClicked:)];
+    NSButton *btnSendClip = [MCGlassButton pillButtonWithTitle:@"Send to Phone" bgAlpha:0.25 tintColor:[NSColor systemBlueColor] target:self action:@selector(sendClipboardClicked:)];
     btnSendClip.frame = NSMakeRect(18, 108, 150, 30);
     [sendCard addSubview:btnSendClip];
 }
 
-#pragma mark - Tab 4: 🖥️ Ekran Yansıtma (Screen Mirroring)
+#pragma mark - Tab 4: 🖥️ Screen Mirroring
 
 - (void)buildScreenMirroringTab {
     self.mirrorView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
     CGFloat pad = 24;
 
     NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 450, 28)];
-    tabTitle.stringValue = @"Ekran Yansıtma (Screen Mirroring)";
+    tabTitle.stringValue = @"Screen Mirroring";
     tabTitle.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
     tabTitle.textColor = [NSColor whiteColor];
     tabTitle.editable = NO;
@@ -1036,7 +1036,7 @@ static NSString *MCFindScrcpyPath(void) {
     [heroCard addSubview:screenIcon];
 
     self.mirrorStatusLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(80, 18, cardW - 100, 24)];
-    self.mirrorStatusLabel.stringValue = @"Telefon Ekranını Mac'te Yönetin (Ultra Akıcı 60 FPS)";
+    self.mirrorStatusLabel.stringValue = @"Control Phone Screen on Mac (Smooth 60 FPS)";
     self.mirrorStatusLabel.font = [NSFont systemFontOfSize:16 weight:NSFontWeightBold];
     self.mirrorStatusLabel.textColor = [NSColor whiteColor];
     self.mirrorStatusLabel.editable = NO;
@@ -1045,7 +1045,7 @@ static NSString *MCFindScrcpyPath(void) {
     [heroCard addSubview:self.mirrorStatusLabel];
 
     NSTextField *subDesc = [[NSTextField alloc] initWithFrame:NSMakeRect(80, 44, cardW - 100, 38)];
-    subDesc.stringValue = @"Scrcpy ve ADB motoru ile telefonunuzun dokunmatik ekranını klavye & farenizle kontrol edin. Ses ve görüntü sıfır gecikmeyle aktarılır.";
+    subDesc.stringValue = @"Control your phone screen with keyboard & mouse via scrcpy and ADB. Low-latency display with audio support.";
     subDesc.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
     subDesc.textColor = [NSColor colorWithCalibratedWhite:0.8 alpha:1.0];
     subDesc.editable = NO;
@@ -1059,7 +1059,7 @@ static NSString *MCFindScrcpyPath(void) {
     [self.mirrorView addSubview:controlCard];
 
     NSTextField *cardHeader = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 14, cardW - 40, 20)];
-    cardHeader.stringValue = @"Yansıtma Yöntemi Seçin";
+    cardHeader.stringValue = @"Select Mirroring Mode";
     cardHeader.font = [NSFont systemFontOfSize:14 weight:NSFontWeightBold];
     cardHeader.textColor = [NSColor whiteColor];
     cardHeader.editable = NO;
@@ -1069,7 +1069,7 @@ static NSString *MCFindScrcpyPath(void) {
 
     // IP Field
     NSTextField *ipTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 46, 120, 20)];
-    ipTitle.stringValue = @"Telefon Wi-Fi IP:";
+    ipTitle.stringValue = @"Phone Wi-Fi IP:";
     ipTitle.font = [NSFont systemFontOfSize:12 weight:NSFontWeightMedium];
     ipTitle.textColor = [NSColor colorWithCalibratedWhite:0.7 alpha:1.0];
     ipTitle.editable = NO;
@@ -1085,28 +1085,28 @@ static NSString *MCFindScrcpyPath(void) {
 
     // Buttons
     // 1. Wireless Mirror button
-    self.btnLaunchWirelessMirror = [MCGlassButton pillButtonWithTitle:@"🚀 Kablosuz Ekranı Başlat (Wi-Fi)" bgAlpha:0.35 tintColor:[NSColor colorWithCalibratedRed:0.18 green:0.80 blue:0.44 alpha:1.0] target:self action:@selector(launchWirelessMirrorClicked:)];
+    self.btnLaunchWirelessMirror = [MCGlassButton pillButtonWithTitle:@"🚀 Launch Wireless Mirror (Wi-Fi)" bgAlpha:0.35 tintColor:[NSColor colorWithCalibratedRed:0.18 green:0.80 blue:0.44 alpha:1.0] target:self action:@selector(launchWirelessMirrorClicked:)];
     self.btnLaunchWirelessMirror.frame = NSMakeRect(20, 84, 250, 36);
     [controlCard addSubview:self.btnLaunchWirelessMirror];
 
     // 2. USB Mirror button
-    self.btnLaunchUsbMirror = [MCGlassButton pillButtonWithTitle:@"🔌 Kablolu USB Ekranı Başlat" bgAlpha:0.25 tintColor:[NSColor systemBlueColor] target:self action:@selector(launchUsbMirrorClicked:)];
+    self.btnLaunchUsbMirror = [MCGlassButton pillButtonWithTitle:@"🔌 Launch USB Mirror" bgAlpha:0.25 tintColor:[NSColor systemBlueColor] target:self action:@selector(launchUsbMirrorClicked:)];
     self.btnLaunchUsbMirror.frame = NSMakeRect(280, 84, 210, 36);
     [controlCard addSubview:self.btnLaunchUsbMirror];
 
     // 3. ADB TCP/IP button
-    self.btnAdbTcpip = [MCGlassButton pillButtonWithTitle:@"📡 Kablosuz ADB Modunu Aç (Port 5555)" bgAlpha:0.18 tintColor:[NSColor systemOrangeColor] target:self action:@selector(enableAdbTcpipClicked:)];
+    self.btnAdbTcpip = [MCGlassButton pillButtonWithTitle:@"📡 Enable Wireless ADB (Port 5555)" bgAlpha:0.18 tintColor:[NSColor systemOrangeColor] target:self action:@selector(enableAdbTcpipClicked:)];
     self.btnAdbTcpip.frame = NSMakeRect(20, 130, 270, 32);
     [controlCard addSubview:self.btnAdbTcpip];
 
     // 4. Install / Check scrcpy button
-    self.btnInstallScrcpy = [MCGlassButton pillButtonWithTitle:@"⚙️ scrcpy Kur / Güncelle" bgAlpha:0.15 tintColor:[NSColor whiteColor] target:self action:@selector(installScrcpyClicked:)];
+    self.btnInstallScrcpy = [MCGlassButton pillButtonWithTitle:@"⚙️ Install / Update scrcpy" bgAlpha:0.15 tintColor:[NSColor whiteColor] target:self action:@selector(installScrcpyClicked:)];
     self.btnInstallScrcpy.frame = NSMakeRect(300, 130, 200, 32);
     [controlCard addSubview:self.btnInstallScrcpy];
 
     // Status / Console Label
     self.mirrorLogLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 176, cardW - 40, 42)];
-    self.mirrorLogLabel.stringValue = MCFindScrcpyPath() ? [NSString stringWithFormat:@"✓ scrcpy kurulu: %@", MCFindScrcpyPath()] : @"⚠️ scrcpy bulunamadı. Kurulum için sağdaki butona tıklayın (brew install scrcpy).";
+    self.mirrorLogLabel.stringValue = MCFindScrcpyPath() ? [NSString stringWithFormat:@"✓ scrcpy installed: %@", MCFindScrcpyPath()] : @"⚠️ scrcpy not found. Click the button to install (brew install scrcpy).";
     self.mirrorLogLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightRegular];
     self.mirrorLogLabel.textColor = MCFindScrcpyPath() ? [NSColor colorWithCalibratedRed:0.4 green:0.9 blue:0.5 alpha:1.0] : [NSColor systemYellowColor];
     self.mirrorLogLabel.editable = NO;
@@ -1120,7 +1120,7 @@ static NSString *MCFindScrcpyPath(void) {
     [self.mirrorView addSubview:guideCard];
 
     NSTextField *guideTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 12, cardW - 40, 20)];
-    guideTitle.stringValue = @"Nasıl Kullanılır?";
+    guideTitle.stringValue = @"How to Use";
     guideTitle.font = [NSFont systemFontOfSize:13 weight:NSFontWeightBold];
     guideTitle.textColor = [NSColor whiteColor];
     guideTitle.editable = NO;
@@ -1129,7 +1129,7 @@ static NSString *MCFindScrcpyPath(void) {
     [guideCard addSubview:guideTitle];
 
     NSTextField *guideText = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 36, cardW - 40, 94)];
-    guideText.stringValue = @"1. Telefonda 'Geliştirici Seçenekleri' -> 'USB Hata Ayıklama' açık olmalıdır.\n2. Kablosuz Yansıtma için: Telefonu bir kez USB ile bağlayıp 'Kablosuz ADB Modunu Aç'a basın.\n3. Ardından USB kablosunu çıkarabilirsiniz. 'Kablosuz Ekranı Başlat'a basarak anında bağlanabilirsiniz!\n4. Görüntü ultra akıcı 60 FPS ayrı pencerede açılır; klavye ve farenizle kontrol edebilirsiniz.";
+    guideText.stringValue = @"1. On phone, enable 'Developer Options' -> 'USB Debugging'.\n2. For Wireless Mirror: Connect phone via USB once and click 'Enable Wireless ADB'.\n3. You can then unplug the USB cable and click 'Launch Wireless Mirror' to connect!\n4. The phone screen opens in an ultra-smooth 60 FPS window controlled by your keyboard & mouse.";
     guideText.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
     guideText.textColor = [NSColor colorWithCalibratedWhite:0.8 alpha:1.0];
     guideText.editable = NO;
@@ -1146,7 +1146,7 @@ static NSString *MCFindScrcpyPath(void) {
         ip = [BluetoothBridge sharedBridge].deviceIpAddress;
     }
     if (ip.length == 0) {
-        self.mirrorLogLabel.stringValue = @"⚠️ Telefon Wi-Fi IP adresi bulunamadı. Lütfen telefonun IP adresini girin.";
+        self.mirrorLogLabel.stringValue = @"⚠️ Phone Wi-Fi IP not found. Please enter phone IP address.";
         return;
     }
 
@@ -1157,7 +1157,7 @@ static NSString *MCFindScrcpyPath(void) {
     }
 
     NSString *adb = MCFindAdbPath();
-    self.mirrorLogLabel.stringValue = [NSString stringWithFormat:@"Kablosuz ADB bağlanıyor: %@:5555 ...", ip];
+    self.mirrorLogLabel.stringValue = [NSString stringWithFormat:@"Connecting wireless ADB: %@:5555 ...", ip];
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         // 1. adb connect <IP>:5555
@@ -1169,14 +1169,14 @@ static NSString *MCFindScrcpyPath(void) {
 
         // 2. Launch scrcpy --tcpip=<IP>:5555
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.mirrorLogLabel.stringValue = [NSString stringWithFormat:@"🚀 Ekran yansıtma başlatıldı: %@:5555", ip];
+            self.mirrorLogLabel.stringValue = [NSString stringWithFormat:@"🚀 Screen mirroring launched: %@:5555", ip];
         });
 
         NSTask *scrcpyTask = [[NSTask alloc] init];
         scrcpyTask.launchPath = scrcpy;
         scrcpyTask.arguments = @[
             [NSString stringWithFormat:@"--tcpip=%@:5555", ip],
-            @"--window-title=MacConnect - Telefon Ekranı",
+            @"--window-title=MacConnect - Phone Screen",
             @"--stay-awake",
             @"--max-fps=60"
         ];
@@ -1189,7 +1189,7 @@ static NSString *MCFindScrcpyPath(void) {
             [scrcpyTask launch];
         } @catch (NSException *e) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                self.mirrorLogLabel.stringValue = [NSString stringWithFormat:@"Hata: %@", e.reason];
+                self.mirrorLogLabel.stringValue = [NSString stringWithFormat:@"Error: %@", e.reason];
             });
         }
     });
@@ -1202,13 +1202,13 @@ static NSString *MCFindScrcpyPath(void) {
         return;
     }
     NSString *adb = MCFindAdbPath();
-    self.mirrorLogLabel.stringValue = @"🔌 USB Ekran yansıtma başlatılıyor...";
+    self.mirrorLogLabel.stringValue = @"🔌 Launching USB screen mirror...";
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSTask *scrcpyTask = [[NSTask alloc] init];
         scrcpyTask.launchPath = scrcpy;
         scrcpyTask.arguments = @[
-            @"--window-title=MacConnect - Telefon Ekranı (USB)",
+            @"--window-title=MacConnect - Phone Screen (USB)",
             @"--stay-awake",
             @"--max-fps=60"
         ];
@@ -1220,11 +1220,11 @@ static NSString *MCFindScrcpyPath(void) {
         @try {
             [scrcpyTask launch];
             dispatch_async(dispatch_get_main_queue(), ^{
-                self.mirrorLogLabel.stringValue = @"🚀 USB Ekran yansıtma devrede!";
+                self.mirrorLogLabel.stringValue = @"🚀 USB screen mirroring active!";
             });
         } @catch (NSException *e) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                self.mirrorLogLabel.stringValue = [NSString stringWithFormat:@"Hata: %@", e.reason];
+                self.mirrorLogLabel.stringValue = [NSString stringWithFormat:@"Error: %@", e.reason];
             });
         }
     });
@@ -1232,7 +1232,7 @@ static NSString *MCFindScrcpyPath(void) {
 
 - (void)enableAdbTcpipClicked:(id)sender {
     NSString *adb = MCFindAdbPath();
-    self.mirrorLogLabel.stringValue = @"📡 'adb tcpip 5555' komutu çalıştırılıyor...";
+    self.mirrorLogLabel.stringValue = @"📡 Running 'adb tcpip 5555' command...";
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSTask *task = [[NSTask alloc] init];
         task.launchPath = adb;
@@ -1240,7 +1240,7 @@ static NSString *MCFindScrcpyPath(void) {
         [task launch];
         [task waitUntilExit];
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.mirrorLogLabel.stringValue = @"✓ Telefon kablosuz ADB (5555) moduna alındı. Artık USB kablosunu çıkarıp kablosuz bağlanabilirsiniz!";
+            self.mirrorLogLabel.stringValue = @"✓ Phone switched to wireless ADB (5555) mode. You can now unplug USB and connect wirelessly!";
         });
     });
 }
@@ -1254,17 +1254,17 @@ static NSString *MCFindScrcpyPath(void) {
     NSString *script = [NSString stringWithFormat:@"tell application \"Terminal\" to do script \"%@\"", cmd];
     NSAppleScript *as = [[NSAppleScript alloc] initWithSource:script];
     [as executeAndReturnError:nil];
-    self.mirrorLogLabel.stringValue = @"Terminal açılarak 'brew install scrcpy' başlatıldı. Kurulum tamamlandığında ekran yansıtmayı kullanabilirsiniz.";
+    self.mirrorLogLabel.stringValue = @"Terminal opened with 'brew install scrcpy'. Once installed, screen mirroring is ready.";
 }
 
-#pragma mark - Tab 5: ⚙️ Ayarlar
+#pragma mark - Tab 5: ⚙️ Settings
 
 - (void)buildSettingsTab {
     self.settingsView = [[MCFlippedView alloc] initWithFrame:self.contentContainerView.bounds];
     CGFloat pad = 24;
 
     NSTextField *tabTitle = [[NSTextField alloc] initWithFrame:NSMakeRect(pad, 48, 300, 28)];
-    tabTitle.stringValue = @"Ayarlar ve Tercihler";
+    tabTitle.stringValue = @"Settings & Preferences";
     tabTitle.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
     tabTitle.textColor = [NSColor whiteColor];
     tabTitle.editable = NO;
@@ -1278,19 +1278,19 @@ static NSString *MCFindScrcpyPath(void) {
     optionsCard.autoresizingMask = NSViewWidthSizable;
     [self.settingsView addSubview:optionsCard];
 
-    self.checkFilterMedia = [NSButton checkboxWithTitle:@"Müzik çalar bildirimlerini sessize al ve filtrele (Spotify, Deezer vb.)" target:nil action:nil];
+    self.checkFilterMedia = [NSButton checkboxWithTitle:@"Mute and filter media player notification spam (Spotify, Deezer, etc.)" target:nil action:nil];
     self.checkFilterMedia.frame = NSMakeRect(20, 18, cardW - 40, 24);
     self.checkFilterMedia.state = NSControlStateValueOn;
     self.checkFilterMedia.font = [NSFont systemFontOfSize:13 weight:NSFontWeightMedium];
     [optionsCard addSubview:self.checkFilterMedia];
 
-    self.checkAutoRaiseOnCall = [NSButton checkboxWithTitle:@"Gelen arama olduğunda MacConnect penceresini otomatik öne getir" target:nil action:nil];
+    self.checkAutoRaiseOnCall = [NSButton checkboxWithTitle:@"Automatically bring MacConnect to front on incoming call" target:nil action:nil];
     self.checkAutoRaiseOnCall.frame = NSMakeRect(20, 60, cardW - 40, 24);
     self.checkAutoRaiseOnCall.state = NSControlStateValueOn;
     self.checkAutoRaiseOnCall.font = [NSFont systemFontOfSize:13 weight:NSFontWeightMedium];
     [optionsCard addSubview:self.checkAutoRaiseOnCall];
 
-    self.checkPlaySound = [NSButton checkboxWithTitle:@"Bildirim geldiğinde yerel sistem sesini çal" target:nil action:nil];
+    self.checkPlaySound = [NSButton checkboxWithTitle:@"Play system sound when a notification arrives" target:nil action:nil];
     self.checkPlaySound.frame = NSMakeRect(20, 102, cardW - 40, 24);
     self.checkPlaySound.state = NSControlStateValueOn;
     self.checkPlaySound.font = [NSFont systemFontOfSize:13 weight:NSFontWeightMedium];
@@ -1301,7 +1301,7 @@ static NSString *MCFindScrcpyPath(void) {
     [self.settingsView addSubview:aboutCard];
 
     NSTextField *aboutBox = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 16, cardW - 40, 52)];
-    aboutBox.stringValue = @"MacConnect v1.0.2 • Native macOS Liquid Glass Edition\nDoğrudan donanım seviyesinde Bluetooth RFCOMM köprüsü ile telefon ve Mac senkronizasyonu.\nGeliştirici: canmertdogan";
+    aboutBox.stringValue = @"MacConnect v1.0.2 • Native macOS Liquid Glass Edition\nHardware-level Bluetooth RFCOMM bridge for phone and Mac continuity.\nDeveloper: canmertdogan";
     aboutBox.font = [NSFont systemFontOfSize:12 weight:NSFontWeightRegular];
     aboutBox.textColor = [NSColor colorWithCalibratedWhite:0.75 alpha:1.0];
     aboutBox.editable = NO;
@@ -1321,10 +1321,10 @@ static NSString *MCFindScrcpyPath(void) {
         self.callHeroAvatarImageView.image = [[NSImage imageWithSystemSymbolName:@"phone.fill" accessibilityDescription:nil] imageWithSymbolConfiguration:cfg];
         self.callHeroAvatarImageView.contentTintColor = [NSColor colorWithCalibratedRed:0.25 green:0.90 blue:0.45 alpha:1.0];
     }
-    self.callHeroTitleLabel.stringValue = @"Görüşme Devam Ediyor";
-    self.callHeroSubtitleLabel.stringValue = @"Telefon eller serbest (hoparlör) modunda. Masanızdan konuşabilirsiniz.";
+    self.callHeroTitleLabel.stringValue = @"Call in Progress";
+    self.callHeroSubtitleLabel.stringValue = @"Hands-free speakerphone active. You can speak from your desk.";
     self.btnAnswerCall.hidden = YES;
-    self.btnRejectCall.title = @"❌ Görüşmeyi Bitir";
+    self.btnRejectCall.title = @"❌ End Call";
     self.btnRejectCall.hidden = NO;
 }
 
@@ -1355,8 +1355,8 @@ static NSString *MCFindScrcpyPath(void) {
     NSString *number = [self.dialerNumberField.stringValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (number.length == 0) {
         NSAlert *alert = [[NSAlert alloc] init];
-        alert.messageText = @"Numara Girilmedi";
-        alert.informativeText = @"Lütfen aramak istediğiniz telefon numarasını tuşlayın.";
+        alert.messageText = @"No Number Entered";
+        alert.informativeText = @"Please enter the phone number you wish to dial.";
         [alert runModal];
         return;
     }
@@ -1365,8 +1365,8 @@ static NSString *MCFindScrcpyPath(void) {
     if (bridge.state != MacConnectStateConnected) {
         NSAlert *alert = [[NSAlert alloc] init];
         alert.alertStyle = NSAlertStyleWarning;
-        alert.messageText = @"Telefon Bağlı Değil";
-        alert.informativeText = @"Arama yapabilmek için telefonunuzun Bluetooth ile bağlı olması gerekir. Lütfen sol menüdeki 'Telefona Bağlan' butonuna tıklayarak telefonunuza bağlanın.";
+        alert.messageText = @"Phone Not Connected";
+        alert.informativeText = @"Your phone must be connected via Bluetooth to place calls. Please click 'Connect to Phone' in the sidebar.";
         [alert runModal];
         return;
     }
@@ -1377,7 +1377,7 @@ static NSString *MCFindScrcpyPath(void) {
     NSDictionary *entry = @{
         @"name": number,
         @"number": number,
-        @"time": @"Az önce (Giden Arama)"
+        @"time": @"Just now (Outgoing Call)"
     };
     [self.recentCalls insertObject:entry atIndex:0];
     [self rebuildRecentCallsStack];
@@ -1389,11 +1389,11 @@ static NSString *MCFindScrcpyPath(void) {
         self.callHeroAvatarImageView.image = [[NSImage imageWithSystemSymbolName:@"phone.arrow.up.right.fill" accessibilityDescription:nil] imageWithSymbolConfiguration:cfg];
         self.callHeroAvatarImageView.contentTintColor = [NSColor colorWithCalibratedRed:0.25 green:0.90 blue:0.45 alpha:1.0];
     }
-    self.callHeroTitleLabel.stringValue = [NSString stringWithFormat:@"Aranıyor: %@", number];
-    self.callHeroSubtitleLabel.stringValue = @"Arama komutu telefona iletildi. Telefonunuz aramayı başlatıyor...";
+    self.callHeroTitleLabel.stringValue = [NSString stringWithFormat:@"Calling: %@", number];
+    self.callHeroSubtitleLabel.stringValue = @"Dial command sent. Your phone is placing the call...";
     self.callHeroButtonStack.hidden = NO;
     self.btnAnswerCall.hidden = YES;
-    self.btnRejectCall.title = @"❌ Aramayı Kapat";
+    self.btnRejectCall.title = @"❌ End Call";
     self.btnRejectCall.hidden = NO;
 }
 
@@ -1406,7 +1406,7 @@ static NSString *MCFindScrcpyPath(void) {
 
     if (self.recentCalls.count == 0) {
         NSTextField *emptyLbl = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 90, w - 40, 70)];
-        emptyLbl.stringValue = @"📞\nHenüz son arama kaydı yok\nTuş takımından numara arayabilir veya gelen aramaları masanızdan yanıtlayabilirsiniz.";
+        emptyLbl.stringValue = @"📞\nNo recent calls yet\nDial numbers with the keypad or answer incoming calls hands-free.";
         emptyLbl.font = [NSFont systemFontOfSize:12 weight:NSFontWeightMedium];
         emptyLbl.textColor = [NSColor colorWithCalibratedWhite:0.55 alpha:1.0];
         emptyLbl.alignment = NSTextAlignmentCenter;
@@ -1445,7 +1445,7 @@ static NSString *MCFindScrcpyPath(void) {
         sub.backgroundColor = [NSColor clearColor];
         [itemBox addSubview:sub];
 
-        MCGlassButton *btnRedial = [MCGlassButton pillButtonWithTitle:@"Ara" bgAlpha:0.25 tintColor:[NSColor systemGreenColor] target:self action:@selector(redialClicked:)];
+        MCGlassButton *btnRedial = [MCGlassButton pillButtonWithTitle:@"Call" bgAlpha:0.25 tintColor:[NSColor systemGreenColor] target:self action:@selector(redialClicked:)];
         btnRedial.frame = NSMakeRect(w - 74, 11, 60, 28);
         btnRedial.customIdentifier = call[@"number"];
         btnRedial.autoresizingMask = NSViewMinXMargin;
@@ -1471,9 +1471,9 @@ static NSString *MCFindScrcpyPath(void) {
 - (void)showIncomingCall:(NSDictionary *)callInfo {
     dispatch_async(dispatch_get_main_queue(), ^{
         self.activeCallInfo = callInfo;
-        NSString *name = callInfo[@"name"] ?: @"Bilinmeyen Arayan";
+        NSString *name = callInfo[@"name"] ?: @"Unknown Caller";
         NSString *number = callInfo[@"number"] ?: @"";
-        NSString *appName = callInfo[@"app_name"] ?: @"Telefon";
+        NSString *appName = callInfo[@"app_name"] ?: @"Phone";
 
         self.callHeroCard.glassFillColor = [NSColor colorWithCalibratedRed:0.45 green:0.12 blue:0.14 alpha:0.45];
         self.callHeroCard.glassStrokeColor = [NSColor colorWithCalibratedRed:0.95 green:0.27 blue:0.27 alpha:0.7];
@@ -1482,14 +1482,14 @@ static NSString *MCFindScrcpyPath(void) {
             self.callHeroAvatarImageView.image = [[NSImage imageWithSystemSymbolName:@"phone.arrow.down.left.fill" accessibilityDescription:nil] imageWithSymbolConfiguration:cfg];
             self.callHeroAvatarImageView.contentTintColor = [NSColor colorWithCalibratedRed:1.0 green:0.35 blue:0.35 alpha:1.0];
         }
-        self.callHeroTitleLabel.stringValue = [NSString stringWithFormat:@"Gelen Arama: %@", name];
+        self.callHeroTitleLabel.stringValue = [NSString stringWithFormat:@"Incoming Call: %@", name];
         self.callHeroSubtitleLabel.stringValue = [NSString stringWithFormat:@"%@ • %@", number, appName];
 
         self.callHeroButtonStack.hidden = NO;
         self.btnAnswerCall.hidden = NO;
-        self.btnAnswerCall.title = @"📞 Cevapla";
+        self.btnAnswerCall.title = @"📞 Answer";
         self.btnRejectCall.hidden = NO;
-        self.btnRejectCall.title = @"❌ Reddet";
+        self.btnRejectCall.title = @"❌ Decline";
 
         if (self.checkAutoRaiseOnCall.state == NSControlStateValueOn) {
             [self showWindowAndActivate];
@@ -1508,27 +1508,27 @@ static NSString *MCFindScrcpyPath(void) {
             self.callHeroAvatarImageView.image = [[NSImage imageWithSystemSymbolName:@"phone.fill" accessibilityDescription:nil] imageWithSymbolConfiguration:cfg];
             self.callHeroAvatarImageView.contentTintColor = [NSColor whiteColor];
         }
-        self.callHeroTitleLabel.stringValue = @"Aktif Arama Yok";
-        self.callHeroSubtitleLabel.stringValue = @"Tuş takımından numara arayabilir veya gelen aramaları masanızdan yanıtlayabilirsiniz.";
+        self.callHeroTitleLabel.stringValue = @"No Active Call";
+        self.callHeroSubtitleLabel.stringValue = @"Dial a number below or answer incoming calls directly from your Mac.";
         self.callHeroButtonStack.hidden = YES;
         self.btnAnswerCall.hidden = NO;
-        self.btnAnswerCall.title = @"📞 Cevapla";
-        self.btnRejectCall.title = @"❌ Reddet";
+        self.btnAnswerCall.title = @"📞 Answer";
+        self.btnRejectCall.title = @"❌ Decline";
     });
 }
 
 - (void)updateCallStatus:(NSString *)status message:(NSString *)message {
     dispatch_async(dispatch_get_main_queue(), ^{
         if ([@"on_computer" isEqualToString:status] || [@"speaker" isEqualToString:status]) {
-            self.callHeroTitleLabel.stringValue = @"🔊 Eller Serbest Modunda";
-            self.callHeroSubtitleLabel.stringValue = message ?: @"Hoparlör devrede. Masanızdan konuşabilirsiniz.";
+            self.callHeroTitleLabel.stringValue = @"🔊 Hands-Free Speakerphone";
+            self.callHeroSubtitleLabel.stringValue = message ?: @"Speakerphone active. You can speak from your desk.";
             self.callHeroButtonStack.hidden = NO;
             self.btnAnswerCall.hidden = YES;
-            self.btnRejectCall.title = @"❌ Görüşmeyi Bitir";
+            self.btnRejectCall.title = @"❌ End Call";
             self.btnRejectCall.hidden = NO;
         } else if ([@"dialing" isEqualToString:status]) {
-            self.callHeroTitleLabel.stringValue = @"Arama Yapılıyor...";
-            self.callHeroSubtitleLabel.stringValue = message ?: @"Telefonda arama başlatıldı.";
+            self.callHeroTitleLabel.stringValue = @"Placing Call...";
+            self.callHeroSubtitleLabel.stringValue = message ?: @"Call initiated on phone.";
         }
     });
 }
@@ -1553,7 +1553,7 @@ static NSString *MCFindScrcpyPath(void) {
 
     if (self.notificationsList.count == 0) {
         NSTextField *emptyLbl = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 100, w - 40, 60)];
-        emptyLbl.stringValue = @"🔔\nHenüz bildirim yok\nTelefondan gelen bildirimler anında burada listelenir.";
+        emptyLbl.stringValue = @"🔔\nNo notifications yet\nIncoming notifications from your phone will appear here in real time.";
         emptyLbl.font = [NSFont systemFontOfSize:13 weight:NSFontWeightMedium];
         emptyLbl.textColor = [NSColor colorWithCalibratedWhite:0.55 alpha:1.0];
         emptyLbl.alignment = NSTextAlignmentCenter;
@@ -1651,22 +1651,22 @@ static NSString *MCFindScrcpyPath(void) {
         }
 
         if (canReply) {
-            MCGlassButton *btnReply = [MCGlassButton pillButtonWithTitle:@"💬 Yanıtla" bgAlpha:0.25 tintColor:[NSColor systemGreenColor] target:self action:@selector(notificationDetailClicked:)];
+            MCGlassButton *btnReply = [MCGlassButton pillButtonWithTitle:@"💬 Reply" bgAlpha:0.25 tintColor:[NSColor systemGreenColor] target:self action:@selector(notificationDetailClicked:)];
             btnReply.frame = NSMakeRect(w - 230, 23, 74, 28);
             btnReply.customIdentifier = [NSString stringWithFormat:@"%ld", (long)i];
             btnReply.autoresizingMask = NSViewMinXMargin;
             [card addSubview:btnReply];
         }
 
-        // Action: Detay Görüntüle Pill Button
-        MCGlassButton *btnDetail = [MCGlassButton pillButtonWithTitle:@"👁 Detay" bgAlpha:0.18 tintColor:[NSColor systemBlueColor] target:self action:@selector(notificationDetailClicked:)];
+        // Action: View Detail Pill Button
+        MCGlassButton *btnDetail = [MCGlassButton pillButtonWithTitle:@"👁 Detail" bgAlpha:0.18 tintColor:[NSColor systemBlueColor] target:self action:@selector(notificationDetailClicked:)];
         btnDetail.frame = NSMakeRect(w - 150, 23, 68, 28);
         btnDetail.customIdentifier = [NSString stringWithFormat:@"%ld", (long)i];
         btnDetail.autoresizingMask = NSViewMinXMargin;
         [card addSubview:btnDetail];
 
         // Action: Kopyala Pill Button
-        MCGlassButton *btnCopy = [MCGlassButton pillButtonWithTitle:@"📋 Kopyala" bgAlpha:0.12 tintColor:[NSColor whiteColor] target:self action:@selector(copyNotificationClicked:)];
+        MCGlassButton *btnCopy = [MCGlassButton pillButtonWithTitle:@"📋 Copy" bgAlpha:0.12 tintColor:[NSColor whiteColor] target:self action:@selector(copyNotificationClicked:)];
         btnCopy.frame = NSMakeRect(w - 74, 23, 64, 28);
         btnCopy.customIdentifier = text.length > 0 ? text : title;
         btnCopy.autoresizingMask = NSViewMinXMargin;
@@ -1796,7 +1796,7 @@ static NSString *MCFindScrcpyPath(void) {
 
     // Notification Title
     NSTextField *notifTitleLbl = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 88, modalW - 40, 24)];
-    notifTitleLbl.stringValue = title.length > 0 ? title : @"(Başlık Yok)";
+    notifTitleLbl.stringValue = title.length > 0 ? title : @"(No Title)";
     notifTitleLbl.font = [NSFont systemFontOfSize:15 weight:NSFontWeightBold];
     notifTitleLbl.textColor = [NSColor whiteColor];
     notifTitleLbl.editable = NO;
@@ -1810,7 +1810,7 @@ static NSString *MCFindScrcpyPath(void) {
     bodyScroll.drawsBackground = NO;
 
     NSTextView *bodyTextView = [[NSTextView alloc] initWithFrame:bodyScroll.bounds];
-    bodyTextView.string = text.length > 0 ? text : @"(İçerik Yok)";
+    bodyTextView.string = text.length > 0 ? text : @"(No Content)";
     bodyTextView.font = [NSFont systemFontOfSize:13 weight:NSFontWeightRegular];
     bodyTextView.textColor = [NSColor colorWithCalibratedWhite:0.9 alpha:1.0];
     bodyTextView.backgroundColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.04];
@@ -1829,7 +1829,7 @@ static NSString *MCFindScrcpyPath(void) {
         [self.detailModalCard addSubview:div2];
 
         NSTextField *replyHeader = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 276, modalW - 40, 18)];
-        replyHeader.stringValue = @"💬 Doğrudan Yanıt Gönder:";
+        replyHeader.stringValue = @"💬 Send Direct Reply:";
         replyHeader.font = [NSFont systemFontOfSize:12 weight:NSFontWeightBold];
         replyHeader.textColor = [NSColor colorWithCalibratedRed:0.4 green:0.95 blue:0.6 alpha:1.0];
         replyHeader.editable = NO;
@@ -1838,11 +1838,11 @@ static NSString *MCFindScrcpyPath(void) {
         [self.detailModalCard addSubview:replyHeader];
 
         NSTextField *replyInput = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 300, modalW - 130, 32)];
-        replyInput.placeholderString = @"Cevabınızı buraya yazın...";
+        replyInput.placeholderString = @"Type your reply here...";
         replyInput.font = [NSFont systemFontOfSize:13];
         [self.detailModalCard addSubview:replyInput];
 
-        MCGlassButton *btnSend = [MCGlassButton pillButtonWithTitle:@"Gönder ➔" bgAlpha:0.35 tintColor:[NSColor colorWithCalibratedRed:0.18 green:0.80 blue:0.44 alpha:1.0] target:nil action:nil];
+        MCGlassButton *btnSend = [MCGlassButton pillButtonWithTitle:@"Send ➔" bgAlpha:0.35 tintColor:[NSColor colorWithCalibratedRed:0.18 green:0.80 blue:0.44 alpha:1.0] target:nil action:nil];
         btnSend.frame = NSMakeRect(modalW - 100, 300, 80, 32);
         __weak typeof(btnSend) weakSendBtn = btnSend;
         __weak typeof(replyInput) weakReplyInput = replyInput;
@@ -1850,10 +1850,10 @@ static NSString *MCFindScrcpyPath(void) {
             NSString *replyStr = weakReplyInput.stringValue;
             if (replyStr.length > 0) {
                 [[BluetoothBridge sharedBridge] replyToNotificationWithId:notifId text:replyStr];
-                weakSendBtn.title = @"✓ İletildi!";
+                weakSendBtn.title = @"✓ Sent!";
                 weakReplyInput.stringValue = @"";
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                    weakSendBtn.title = @"Gönder ➔";
+                    weakSendBtn.title = @"Send ➔";
                 });
             }
         };
@@ -1863,21 +1863,21 @@ static NSString *MCFindScrcpyPath(void) {
     }
 
     // Bottom Action Bar: Copy and Close
-    MCGlassButton *btnCopyFull = [MCGlassButton pillButtonWithTitle:@"📋 Tam Metni Kopyala" bgAlpha:0.25 tintColor:[NSColor systemBlueColor] target:nil action:nil];
+    MCGlassButton *btnCopyFull = [MCGlassButton pillButtonWithTitle:@"📋 Copy Full Text" bgAlpha:0.25 tintColor:[NSColor systemBlueColor] target:nil action:nil];
     btnCopyFull.frame = NSMakeRect(20, bottomBarY, 180, 34);
     __weak typeof(btnCopyFull) weakBtn = btnCopyFull;
     btnCopyFull.onClickBlock = ^{
         NSPasteboard *pb = [NSPasteboard generalPasteboard];
         [pb clearContents];
         [pb setString:(text.length > 0 ? text : title) forType:NSPasteboardTypeString];
-        weakBtn.title = @"✓ Kopyalandı!";
+        weakBtn.title = @"✓ Copied!";
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            weakBtn.title = @"📋 Tam Metni Kopyala";
+            weakBtn.title = @"📋 Copy Full Text";
         });
     };
     [self.detailModalCard addSubview:btnCopyFull];
 
-    MCGlassButton *btnDismiss = [MCGlassButton pillButtonWithTitle:@"Kapat" bgAlpha:0.15 tintColor:[NSColor whiteColor] target:self action:@selector(closeDetailModalClicked:)];
+    MCGlassButton *btnDismiss = [MCGlassButton pillButtonWithTitle:@"Close" bgAlpha:0.15 tintColor:[NSColor whiteColor] target:self action:@selector(closeDetailModalClicked:)];
     btnDismiss.frame = NSMakeRect(modalW - 110, bottomBarY, 90, 34);
     [self.detailModalCard addSubview:btnDismiss];
 }
@@ -1901,20 +1901,20 @@ static NSString *MCFindScrcpyPath(void) {
         if (state == MacConnectStateConnected) {
             NSString *dev = (name.length > 0) ? name : @"Android";
             self.sidebarStatusDot.layer.backgroundColor = [NSColor systemGreenColor].CGColor;
-            self.sidebarStatusLabel.stringValue = [NSString stringWithFormat:@"Bağlı: %@", dev];
-            self.sidebarConnectButton.title = @"Bağlantıyı Kes";
-            self.deviceModelLabel.stringValue = [NSString stringWithFormat:@"Cihaz: %@", dev];
-            self.deviceStatusFullLabel.stringValue = @"Bağlantı: Bluetooth RFCOMM (🟢 Bağlı)";
+            self.sidebarStatusLabel.stringValue = [NSString stringWithFormat:@"Connected: %@", dev];
+            self.sidebarConnectButton.title = @"Disconnect";
+            self.deviceModelLabel.stringValue = [NSString stringWithFormat:@"Device: %@", dev];
+            self.deviceStatusFullLabel.stringValue = @"Connection: Bluetooth RFCOMM (🟢 Connected)";
         } else if (state == MacConnectStateConnecting) {
             self.sidebarStatusDot.layer.backgroundColor = [NSColor systemYellowColor].CGColor;
-            self.sidebarStatusLabel.stringValue = @"Bağlanıyor...";
-            self.sidebarConnectButton.title = @"İptal";
-            self.deviceStatusFullLabel.stringValue = @"Bağlantı: Bluetooth RFCOMM (🟡 Bağlanıyor...)";
+            self.sidebarStatusLabel.stringValue = @"Connecting...";
+            self.sidebarConnectButton.title = @"Cancel";
+            self.deviceStatusFullLabel.stringValue = @"Connection: Bluetooth RFCOMM (🟡 Connecting...)";
         } else {
             self.sidebarStatusDot.layer.backgroundColor = [NSColor systemRedColor].CGColor;
-            self.sidebarStatusLabel.stringValue = @"Bağlantı Yok";
-            self.sidebarConnectButton.title = @"Telefona Bağlan";
-            self.deviceStatusFullLabel.stringValue = @"Bağlantı: Bluetooth RFCOMM (🔴 Bağlantı Kesildi)";
+            self.sidebarStatusLabel.stringValue = @"Not Connected";
+            self.sidebarConnectButton.title = @"Connect to Phone";
+            self.deviceStatusFullLabel.stringValue = @"Connection: Bluetooth RFCOMM (🔴 Disconnected)";
         }
     });
 }
@@ -1922,11 +1922,11 @@ static NSString *MCFindScrcpyPath(void) {
 - (void)updateBatteryLevel:(NSInteger)level {
     dispatch_async(dispatch_get_main_queue(), ^{
         if (level >= 0) {
-            self.sidebarBatteryLabel.stringValue = [NSString stringWithFormat:@"🔋 Pil: %%%ld", (long)level];
-            self.deviceBatteryFullLabel.stringValue = [NSString stringWithFormat:@"Pil Durumu: %%%ld", (long)level];
+            self.sidebarBatteryLabel.stringValue = [NSString stringWithFormat:@"🔋 Battery: %ld%%", (long)level];
+            self.deviceBatteryFullLabel.stringValue = [NSString stringWithFormat:@"Battery Level: %ld%%", (long)level];
         } else {
-            self.sidebarBatteryLabel.stringValue = @"🔋 Pil: --";
-            self.deviceBatteryFullLabel.stringValue = @"Pil Durumu: --";
+            self.sidebarBatteryLabel.stringValue = @"🔋 Battery: --";
+            self.deviceBatteryFullLabel.stringValue = @"Battery Level: --";
         }
     });
 }
@@ -1942,8 +1942,8 @@ static NSString *MCFindScrcpyPath(void) {
     if (txt && txt.length > 0) {
         [[BluetoothBridge sharedBridge] sendClipboardText:txt];
         NSAlert *alert = [[NSAlert alloc] init];
-        alert.messageText = @"Metin İletildi";
-        alert.informativeText = @"Metin başarıyla telefonun panosuna aktarıldı.";
+        alert.messageText = @"Text Sent";
+        alert.informativeText = @"Text successfully copied to phone clipboard.";
         [alert runModal];
     }
 }
